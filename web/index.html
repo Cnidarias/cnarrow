@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#d3e0cd">
+  <title>Cnarrow</title>
+  <style>
+    :root { color-scheme: light; background: #d3e0cd; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      background: #d3e0cd;
+      font-family: system-ui, sans-serif;
+      overscroll-behavior: none;
+    }
+    #game-wrap {
+      position: fixed;
+      inset: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
+      display: grid;
+      place-items: stretch;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+      touch-action: none;
+    }
+    #status {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      gap: .7rem;
+      padding: 2rem;
+      color: #1d231f;
+      text-align: center;
+      background: #d3e0cd;
+      transition: opacity .25s ease;
+    }
+    #status.ready { opacity: 0; pointer-events: none; }
+    #status.error { color: #562e2e; }
+    #status small { max-width: 34rem; color: #6e836f; }
+  </style>
+</head>
+<body>
+  <main id="game-wrap"><canvas id="canvas" tabindex="0" aria-label="Cnarrow puzzle game"></canvas></main>
+  <div id="status" role="status"><strong>Loading Cnarrow…</strong><small>Preparing the puzzle board</small></div>
+  <script src="cnarrow.js"></script>
+  <script>
+    const canvas = document.getElementById('canvas');
+    const wrap = document.getElementById('game-wrap');
+    const status = document.getElementById('status');
+    let game = null;
+    let started = false;
+    let frameHandle = 0;
+    let pixelWidth = 0;
+    let pixelHeight = 0;
+
+    function canvasPixels() {
+      const rect = wrap.getBoundingClientRect();
+      const scale = Math.min(window.devicePixelRatio || 1, 2.5);
+      return [Math.max(1, Math.round(rect.width * scale)), Math.max(1, Math.round(rect.height * scale))];
+    }
+
+    function resize() {
+      const [width, height] = canvasPixels();
+      if (width === pixelWidth && height === pixelHeight) return;
+      pixelWidth = width;
+      pixelHeight = height;
+      canvas.width = width;
+      canvas.height = height;
+      if (started) game._cnarrow_resize(width, height);
+    }
+
+    function frame() {
+      resize();
+      game._cnarrow_frame();
+      frameHandle = requestAnimationFrame(frame);
+    }
+
+    canvas.addEventListener('contextmenu', event => event.preventDefault());
+    new ResizeObserver(resize).observe(wrap);
+
+    createCnarrowModule({ canvas }).then(module => {
+      game = module;
+      resize();
+      game._cnarrow_start(pixelWidth, pixelHeight);
+      started = true;
+      status.classList.add('ready');
+      canvas.focus({ preventScroll: true });
+      frameHandle = requestAnimationFrame(frame);
+    }).catch(error => {
+      console.error(error);
+      status.classList.add('error');
+      status.innerHTML = '<strong>Cnarrow could not start.</strong><small>Check WebAssembly/WebGL support and reload the page.</small>';
+    });
+
+    addEventListener('pagehide', () => {
+      cancelAnimationFrame(frameHandle);
+      if (started) game._cnarrow_shutdown();
+      started = false;
+    }, { once: true });
+  </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+package tests
+
+import "core:testing"
+import g "src:g"
+
+@(test)
+test_cells_heads_and_blockers :: proc(t: ^testing.T) {
+	board := g.Board{side = 6, arrow_count = 3}
+	board.arrows[0] = {id = 0, tail = {0, 2}, length = 3, dir = .Right}
+	board.arrows[1] = {id = 1, tail = {4, 0}, length = 3, dir = .Down}
+	board.arrows[2] = {id = 2, tail = {1, 5}, length = 2, dir = .Left}
+	testing.expect(t, g.rebuild_occupancy(&board))
+	testing.expect_value(t, g.arrow_head(&board.arrows[0]), g.Grid_Pos{2, 2})
+	testing.expect(t, g.in_bounds(&board, {5, 5}))
+	testing.expect(t, !g.in_bounds(&board, {6, 5}))
+	blocker, distance, blocked := g.nearest_blocker(&board, 0)
+	testing.expect(t, blocked)
+	testing.expect_value(t, blocker, 1)
+	testing.expect_value(t, distance, 2)
+	testing.expect(t, g.can_escape(&board, 1))
+	testing.expect(t, g.can_escape(&board, 2))
+	testing.expect(t, !g.remove_arrow(&board, 0))
+	testing.expect(t, g.remove_arrow(&board, 1))
+	testing.expect(t, g.remove_arrow(&board, 0))
+}
+
+@(test)
+test_overlap_and_invalid_bounds_rejected :: proc(t: ^testing.T) {
+	board := g.Board{side = 6, arrow_count = 2}
+	board.arrows[0] = {id = 0, tail = {0, 0}, length = 3, dir = .Right}
+	board.arrows[1] = {id = 1, tail = {2, 0}, length = 2, dir = .Down}
+	testing.expect(t, !g.rebuild_occupancy(&board))
+	board.arrow_count = 1
+	board.arrows[0] = {id = 0, tail = {5, 5}, length = 2, dir = .Right}
+	testing.expect(t, !g.rebuild_occupancy(&board))
+}
+
+@(test)
+test_generation_is_bounded_valid_and_replayable :: proc(t: ^testing.T) {
+	for size in g.Grid_Size {
+		for difficulty in g.Difficulty {
+			for seed in 1..=12 {
+				board := g.generate_board(g.grid_side(size), difficulty, u64(seed) * 1234567)
+				testing.expectf(t, board.arrow_count > 0, "empty board for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, g.rebuild_occupancy(&board), "invalid occupancy for %v %v seed %d", size, difficulty, seed)
+				occupied := 0
+				total_turns := 0
+				longest := 0
+				for i in 0..<board.arrow_count {
+					a := &board.arrows[i]
+					occupied += a.length
+					longest = max(longest, a.length)
+					testing.expect(t, a.length >= 2 && a.length <= g.MAX_ARROW_LENGTH)
+					for segment in 0..<a.length {
+						testing.expect(t, g.in_bounds(&board, g.arrow_cell(a, segment)))
+						if segment >= 2 {
+							p0 := g.arrow_cell(a, segment - 2)
+							p1 := g.arrow_cell(a, segment - 1)
+							p2 := g.arrow_cell(a, segment)
+							if p1.x - p0.x != p2.x - p1.x || p1.y - p0.y != p2.y - p1.y do total_turns += 1
+						}
+					}
+				}
+				ratio := f32(occupied) / f32(board.side * board.side)
+				testing.expectf(t, ratio == 1, "board is not completely filled for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, longest >= board.side, "board has no region-spanning arrow for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, total_turns >= board.side, "board is not maze-like enough for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, g.board_solvable(&board), "unsolvable board for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, g.solution_clears(&board), "recorded solution failed for %v %v seed %d", size, difficulty, seed)
+			}
+		}
+	}
+}
+
+@(test)
+test_animation_endpoints_and_game_states :: proc(t: ^testing.T) {
+	game := g.Game{phase = .Playing}
+	game.board = g.Board{side = 6, arrow_count = 2}
+	game.board.arrows[0] = {id = 0, tail = {0, 2}, length = 2, dir = .Right}
+	game.board.arrows[1] = {id = 1, tail = {3, 0}, length = 3, dir = .Down}
+	testing.expect(t, g.rebuild_occupancy(&game.board))
+	testing.expect(t, g.start_arrow_animation(&game, 0))
+	testing.expect_value(t, game.animation.kind, g.Animation_Kind.Blocked)
+	g.update_animation(&game, 1)
+	testing.expect_value(t, game.animation.kind, g.Animation_Kind.None)
+	testing.expect_value(t, game.blocked_taps, 1)
+	testing.expect_value(t, game.removed_count, 0)
+	testing.expect(t, g.start_arrow_animation(&game, 1))
+	g.update_animation(&game, 1)
+	testing.expect(t, game.board.arrows[1].removed)
+	testing.expect_value(t, game.removed_count, 1)
+	g.request_new_puzzle(&game)
+	testing.expect_value(t, game.phase, g.Game_Phase.Confirm_New)
+}
+
+@(test)
+test_completion_and_next_puzzle_flow :: proc(t: ^testing.T) {
+	game := g.Game{phase = .Playing, selected_size = .Small, selected_difficulty = .Easy}
+	game.board = g.Board{side = 6, arrow_count = 1}
+	game.board.arrows[0] = {id = 0, tail = {1, 1}, length = 2, dir = .Right}
+	testing.expect(t, g.rebuild_occupancy(&game.board))
+	g.start_arrow_animation(&game, 0)
+	g.update_animation(&game, 2)
+	testing.expect_value(t, game.phase, g.Game_Phase.Complete)
+	g.start_puzzle(&game)
+	testing.expect_value(t, game.phase, g.Game_Phase.Playing)
+	testing.expect_value(t, game.removed_count, 0)
+	testing.expect(t, game.board.arrow_count > 0)
+}

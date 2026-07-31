@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+odin_root="$(odin root)"
+raylib_web="$odin_root/vendor/raylib/wasm/libraylib.web.a"
+
+if ! command -v emcc >/dev/null 2>&1; then
+  echo "error: emcc was not found; activate the Emscripten SDK first" >&2
+  exit 1
+fi
+if [[ ! -f "$raylib_web" ]]; then
+  echo "error: Odin's Raylib web archive was not found at $raylib_web" >&2
+  exit 1
+fi
+
+mkdir -p "$project_dir/build"
+odin build "$project_dir/source/web" \
+  -collection:src="$project_dir/source" \
+  -target:js_wasm32 \
+  -build-mode:obj \
+  -out:"$project_dir/build/cnarrow.obj" \
+  -o:speed
+
+emcc "$project_dir/build/cnarrow.obj" "$raylib_web" \
+  -o "$project_dir/build/cnarrow.js" \
+  -sUSE_GLFW=3 \
+  -sALLOW_MEMORY_GROWTH=1 \
+  -sMIN_WEBGL_VERSION=2 \
+  -sMAX_WEBGL_VERSION=2 \
+  -sENVIRONMENT=web \
+  -sMODULARIZE=1 \
+  -sEXPORT_NAME=createCnarrowModule \
+  -sEXPORTED_FUNCTIONS='["_main","_cnarrow_start","_cnarrow_frame","_cnarrow_resize","_cnarrow_shutdown"]' \
+  -sNO_EXIT_RUNTIME=1 \
+  -sASSERTIONS=1
+
+cp "$project_dir/web/index.html" "$project_dir/build/index.html"
+echo "Built browser game in $project_dir/build"
