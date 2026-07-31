@@ -2,6 +2,7 @@ package tests
 
 import "core:testing"
 import g "src:g"
+import rl "vendor:raylib"
 
 @(test)
 test_cells_heads_and_blockers :: proc(t: ^testing.T) {
@@ -33,6 +34,22 @@ test_overlap_and_invalid_bounds_rejected :: proc(t: ^testing.T) {
 	board.arrow_count = 1
 	board.arrows[0] = {id = 0, tail = {5, 5}, length = 2, dir = .Right}
 	testing.expect(t, !g.rebuild_occupancy(&board))
+}
+
+@(test)
+test_arrow_hit_area_covers_full_stroke :: proc(t: ^testing.T) {
+	game := g.Game{}
+	game.board = g.Board{side = 6, arrow_count = 2}
+	game.board.arrows[0] = {id = 0, tail = {0, 1}, length = 5, dir = .Right}
+	game.board.arrows[1] = {id = 1, tail = {0, 3}, length = 5, dir = .Right}
+	testing.expect(t, g.rebuild_occupancy(&game.board))
+	layout := g.make_layout(900, 700)
+	start := g.grid_to_screen(&game.board, &layout, {1, 1})
+	end := g.grid_to_screen(&game.board, &layout, {2, 1})
+	midpoint := rl.Vector2{(start.x + end.x) / 2, (start.y + end.y) / 2 + 5}
+	testing.expect_value(t, g.arrow_at_point(&game, midpoint, &layout), 0)
+	second := g.grid_to_screen(&game.board, &layout, {2, 3})
+	testing.expect_value(t, g.arrow_at_point(&game, second, &layout), 1)
 }
 
 @(test)
@@ -120,6 +137,21 @@ test_animation_endpoints_and_game_states :: proc(t: ^testing.T) {
 	testing.expect_value(t, game.removed_count, 1)
 	g.request_new_puzzle(&game)
 	testing.expect_value(t, game.phase, g.Game_Phase.Confirm_New)
+}
+
+@(test)
+test_animation_follows_arrow_path :: proc(t: ^testing.T) {
+	board := g.Board{side = 6, arrow_count = 1, path_cell_count = 4}
+	board.path_cells[0] = {0, 2}
+	board.path_cells[1] = {1, 2}
+	board.path_cells[2] = {1, 1}
+	board.path_cells[3] = {2, 1}
+	board.arrows[0] = {id = 0, length = 4, path_start = 0, path_count = 4}
+	testing.expect(t, g.rebuild_occupancy(&board))
+	x, y := g.arrow_path_position(&board, &board.arrows[0], 1.5)
+	testing.expectf(t, x == 1 && y == 1.5, "expected path interpolation at (1, 1.5), got (%.2f, %.2f)", x, y)
+	x, y = g.arrow_path_position(&board, &board.arrows[0], 4)
+	testing.expectf(t, x == 3 && y == 1, "expected head extension at (3, 1), got (%.2f, %.2f)", x, y)
 }
 
 @(test)

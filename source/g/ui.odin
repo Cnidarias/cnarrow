@@ -43,25 +43,52 @@ point_in :: proc(point: rl.Vector2, rect: rl.Rectangle) -> bool {
 	return rl.CheckCollisionPointRec(point, rect)
 }
 
+point_segment_distance_squared :: proc(point, start, end: rl.Vector2) -> f32 {
+	dx, dy := end.x - start.x, end.y - start.y
+	length_squared := dx * dx + dy * dy
+	if length_squared <= 0.0001 {
+		x, y := point.x - start.x, point.y - start.y
+		return x * x + y * y
+	}
+	t := ((point.x - start.x) * dx + (point.y - start.y) * dy) / length_squared
+	t = max(0.0, min(1.0, t))
+	closest_x := start.x + dx * t
+	closest_y := start.y + dy * t
+	x, y := point.x - closest_x, point.y - closest_y
+	return x * x + y * y
+}
+
 arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 	board := &game.board
 	if !point_in(point, layout.board) do return -1
 	pad := layout.board.width * 0.065
 	span := layout.board.width - pad * 2
 	spacing := span / f32(board.side - 1)
-	threshold_sq := spacing * spacing * 0.18
+	// The whole stroke is interactive, with a forgiving but non-overlapping
+	// target on dense boards. Resolve overlaps by choosing the nearest path.
+	hit_radius := min(14.0, max(7.0, spacing * 0.46))
+	threshold_sq := hit_radius * hit_radius
+	best_distance := threshold_sq
+	best_arrow := -1
 	for i in 0..<board.arrow_count {
 		a := &board.arrows[i]
 		if a.removed do continue
-		for segment in 0..<a.length {
-			p := arrow_cell(board, a, segment)
-			x := layout.board.x + pad + f32(p.x) * spacing
-			y := layout.board.y + pad + f32(p.y) * spacing
-			dx, dy := point.x - x, point.y - y
-			if dx * dx + dy * dy <= threshold_sq do return i
+		previous := grid_to_screen(board, layout, arrow_cell(board, a, 0))
+		if a.length == 1 {
+			distance := point_segment_distance_squared(point, previous, previous)
+			if distance <= best_distance { best_distance, best_arrow = distance, i }
+			continue
+		}
+		for segment in 1..<a.length {
+			current := grid_to_screen(board, layout, arrow_cell(board, a, segment))
+			distance := point_segment_distance_squared(point, previous, current)
+			if distance <= best_distance {
+				best_distance, best_arrow = distance, i
+			}
+			previous = current
 		}
 	}
-	return -1
+	return best_arrow
 }
 
 handle_input :: proc(game: ^Game) {

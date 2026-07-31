@@ -27,12 +27,16 @@ draw_button :: proc(rect: rl.Rectangle, label: cstring, selected := false) {
 }
 
 grid_to_screen :: proc(board: ^Board, layout: ^Layout, p: Grid_Pos, offset: f32 = 0, dir: Direction = .Right) -> rl.Vector2 {
+	step := direction_step(dir)
+	return grid_coordinates_to_screen(board, layout, f32(p.x) + f32(step.x) * offset, f32(p.y) + f32(step.y) * offset)
+}
+
+grid_coordinates_to_screen :: proc(board: ^Board, layout: ^Layout, x, y: f32) -> rl.Vector2 {
 	pad := layout.board.width * 0.065
 	spacing := (layout.board.width - pad * 2) / f32(board.side - 1)
-	step := direction_step(dir)
 	return {
-		layout.board.x + pad + (f32(p.x) + f32(step.x) * offset) * spacing,
-		layout.board.y + pad + (f32(p.y) + f32(step.y) * offset) * spacing,
+		layout.board.x + pad + x * spacing,
+		layout.board.y + pad + y * spacing,
 	}
 }
 
@@ -40,17 +44,21 @@ draw_arrow :: proc(game: ^Game, arrow: ^Arrow, layout: ^Layout) {
 	points: [MAX_ARROW_LENGTH]rl.Vector2
 	head_dir := arrow_direction(&game.board, arrow)
 	for segment in 0..<arrow.length {
-		offset: f32
+		travel: f32
 		if game.animation.kind != .None && game.animation.arrow_id == arrow.id {
-			offset = animation_segment_offset(&game.animation, segment, arrow.length)
+			travel = animation_segment_offset(&game.animation, segment, arrow.length)
 		}
-		points[segment] = grid_to_screen(&game.board, layout, arrow_cell(&game.board, arrow, segment), offset, head_dir)
+		x, y := arrow_path_position(&game.board, arrow, f32(segment) + travel)
+		points[segment] = grid_coordinates_to_screen(&game.board, layout, x, y)
 	}
 	spacing := (layout.board.width * 0.87) / f32(game.board.side - 1)
 	thickness := max(4.0, spacing * 0.16)
-	tail_step := direction_step(arrow_tail_direction(&game.board, arrow))
-	points[0].x -= f32(tail_step.x) * spacing * 0.28
-	points[0].y -= f32(tail_step.y) * spacing * 0.28
+	tail_dx, tail_dy := points[1].x - points[0].x, points[1].y - points[0].y
+	tail_length := f32(math.sqrt(f64(tail_dx * tail_dx + tail_dy * tail_dy)))
+	if tail_length > 0.001 {
+		points[0].x -= tail_dx / tail_length * spacing * 0.28
+		points[0].y -= tail_dy / tail_length * spacing * 0.28
+	}
 	for i in 0..<arrow.length - 1 {
 		rl.DrawLineEx(points[i], points[i + 1], thickness, INK)
 	}

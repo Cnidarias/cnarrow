@@ -12,9 +12,20 @@ start_arrow_animation :: proc(game: ^Game, arrow_id: int) -> bool {
 			duration = 0.46, stretch = min(f32(distance) - 0.28, 0.72),
 		}
 	} else {
+		a := &game.board.arrows[arrow_id]
+		head := arrow_head(&game.board, a)
+		exit_distance := 1
+		switch arrow_direction(&game.board, a) {
+		case .Up:    exit_distance = head.y + 1
+		case .Right: exit_distance = game.board.side - head.x
+		case .Down:  exit_distance = game.board.side - head.y
+		case .Left:  exit_distance = head.x + 1
+		}
+		travel := f32(a.length - 1 + exit_distance + 2)
 		game.animation = {
 			kind = .Escaping, arrow_id = arrow_id, blocker_id = -1,
-			duration = 0.72, stretch = f32(game.board.side + game.board.arrows[arrow_id].length + 2),
+			duration = min(2.2, max(0.78, 0.52 + travel * 0.018)),
+			stretch = travel,
 		}
 	}
 	return true
@@ -51,10 +62,28 @@ update_animation :: proc(game: ^Game, dt: f32) {
 
 animation_segment_offset :: proc(animation: ^Arrow_Animation, segment, length: int) -> f32 {
 	if animation.kind == .None do return 0
-	if animation.kind == .Blocked do return animation.offset
-	// Heads lead and tails follow, creating the slithering stretch.
-	progress := min(animation.time / animation.duration, 1.0)
-	lag := f32(length - 1 - segment) * 0.055
-	local := max(0.0, min(1.0, (progress - lag) / max(0.15, 1.0 - lag)))
-	return animation.stretch * local * local * (3 - 2 * local)
+	// Every point advances the same path distance. Since points begin at
+	// different positions, the body naturally follows every corner in order.
+	return animation.offset
+}
+
+arrow_path_position :: proc(board: ^Board, arrow: ^Arrow, distance: f32) -> (x, y: f32) {
+	if distance <= 0 {
+		p := arrow_cell(board, arrow, 0)
+		return f32(p.x), f32(p.y)
+	}
+	last := arrow.length - 1
+	if distance < f32(last) {
+		index := int(distance)
+		fraction := distance - f32(index)
+		from := arrow_cell(board, arrow, index)
+		to := arrow_cell(board, arrow, index + 1)
+		return f32(from.x) + f32(to.x - from.x) * fraction,
+		       f32(from.y) + f32(to.y - from.y) * fraction
+	}
+	head := arrow_head(board, arrow)
+	step := direction_step(arrow_direction(board, arrow))
+	beyond := distance - f32(last)
+	return f32(head.x) + f32(step.x) * beyond,
+	       f32(head.y) + f32(step.y) * beyond
 }
