@@ -1,9 +1,9 @@
 package g
 
-MAX_SIDE   :: 24
+MAX_SIDE   :: 40
 MAX_CELLS  :: MAX_SIDE * MAX_SIDE
 MAX_ARROWS :: MAX_CELLS / 2
-MAX_ARROW_LENGTH :: 64
+MAX_ARROW_LENGTH :: 128
 
 Grid_Pos :: struct { x, y: int }
 Path_Pos :: struct { x, y: u8 }
@@ -29,7 +29,7 @@ Arrow :: struct {
 	tail:    Grid_Pos,
 	length:  int,
 	dir:     Direction,
-	path:    [MAX_ARROW_LENGTH]Path_Pos,
+	path_start:int,
 	path_count:int,
 	removed: bool,
 }
@@ -39,6 +39,8 @@ Board :: struct {
 	arrows:     [MAX_ARROWS]Arrow,
 	arrow_count:int,
 	occupancy:  [MAX_CELLS]int, // zero is empty; otherwise arrow id + 1
+	path_cells: [MAX_CELLS]Path_Pos,
+	path_cell_count:int,
 	solution:   [MAX_ARROWS]int,
 	seed:       u64,
 }
@@ -62,9 +64,9 @@ game: Game
 
 grid_side :: proc(size: Grid_Size) -> int {
 	switch size {
-	case .Small:  return 16
-	case .Medium: return 20
-	case .Large:  return 24
+	case .Small:  return 24
+	case .Medium: return 32
+	case .Large:  return 40
 	}
 	return 8
 }
@@ -91,22 +93,22 @@ cell_index :: proc(board: ^Board, p: Grid_Pos) -> int {
 	return p.y * board.side + p.x
 }
 
-arrow_cell :: proc(arrow: ^Arrow, segment: int) -> Grid_Pos {
+arrow_cell :: proc(board: ^Board, arrow: ^Arrow, segment: int) -> Grid_Pos {
 	if arrow.path_count > 0 {
-		p := arrow.path[segment]
+		p := board.path_cells[arrow.path_start + segment]
 		return {int(p.x), int(p.y)}
 	}
 	return pos_add(arrow.tail, direction_step(arrow.dir), segment)
 }
 
-arrow_head :: proc(arrow: ^Arrow) -> Grid_Pos {
-	return arrow_cell(arrow, arrow.length - 1)
+arrow_head :: proc(board: ^Board, arrow: ^Arrow) -> Grid_Pos {
+	return arrow_cell(board, arrow, arrow.length - 1)
 }
 
-arrow_direction :: proc(arrow: ^Arrow) -> Direction {
+arrow_direction :: proc(board: ^Board, arrow: ^Arrow) -> Direction {
 	if arrow.path_count < 2 do return arrow.dir
-	head := arrow_cell(arrow, arrow.path_count - 1)
-	before := arrow_cell(arrow, arrow.path_count - 2)
+	head := arrow_cell(board, arrow, arrow.path_count - 1)
+	before := arrow_cell(board, arrow, arrow.path_count - 2)
 	dx, dy := head.x - before.x, head.y - before.y
 	if dx > 0 do return .Right
 	if dx < 0 do return .Left
@@ -114,9 +116,9 @@ arrow_direction :: proc(arrow: ^Arrow) -> Direction {
 	return .Up
 }
 
-arrow_tail_direction :: proc(arrow: ^Arrow) -> Direction {
+arrow_tail_direction :: proc(board: ^Board, arrow: ^Arrow) -> Direction {
 	if arrow.path_count < 2 do return arrow.dir
-	first, second := arrow_cell(arrow, 0), arrow_cell(arrow, 1)
+	first, second := arrow_cell(board, arrow, 0), arrow_cell(board, arrow, 1)
 	dx, dy := second.x - first.x, second.y - first.y
 	if dx > 0 do return .Right
 	if dx < 0 do return .Left

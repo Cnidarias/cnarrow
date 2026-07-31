@@ -38,17 +38,17 @@ grid_to_screen :: proc(board: ^Board, layout: ^Layout, p: Grid_Pos, offset: f32 
 
 draw_arrow :: proc(game: ^Game, arrow: ^Arrow, layout: ^Layout) {
 	points: [MAX_ARROW_LENGTH]rl.Vector2
-	head_dir := arrow_direction(arrow)
+	head_dir := arrow_direction(&game.board, arrow)
 	for segment in 0..<arrow.length {
 		offset: f32
 		if game.animation.kind != .None && game.animation.arrow_id == arrow.id {
 			offset = animation_segment_offset(&game.animation, segment, arrow.length)
 		}
-		points[segment] = grid_to_screen(&game.board, layout, arrow_cell(arrow, segment), offset, head_dir)
+		points[segment] = grid_to_screen(&game.board, layout, arrow_cell(&game.board, arrow, segment), offset, head_dir)
 	}
 	spacing := (layout.board.width * 0.87) / f32(game.board.side - 1)
 	thickness := max(4.0, spacing * 0.16)
-	tail_step := direction_step(arrow_tail_direction(arrow))
+	tail_step := direction_step(arrow_tail_direction(&game.board, arrow))
 	points[0].x -= f32(tail_step.x) * spacing * 0.28
 	points[0].y -= f32(tail_step.y) * spacing * 0.28
 	for i in 0..<arrow.length - 1 {
@@ -86,7 +86,7 @@ draw_settings :: proc(game: ^Game, layout: ^Layout) {
 	label_size := int(max(15.0, min(19.0, p.width * 0.055)))
 	rl.DrawText("NEXT GRID", i32(p.x), i32(layout.size_buttons[0].y - 25), i32(label_size), SAGE_DARK)
 	rl.DrawText("DIFFICULTY", i32(p.x), i32(layout.diff_buttons[0].y - 25), i32(label_size), SAGE_DARK)
-	size_labels := [3]cstring{"16 x 16", "20 x 20", "24 x 24"}
+	size_labels := [3]cstring{"24 x 24", "32 x 32", "40 x 40"}
 	diff_labels := [3]cstring{"Easy", "Medium", "Hard"}
 	for i in 0..<3 {
 		draw_button(layout.size_buttons[i], size_labels[i], int(game.selected_size) == i)

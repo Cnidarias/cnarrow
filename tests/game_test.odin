@@ -10,7 +10,7 @@ test_cells_heads_and_blockers :: proc(t: ^testing.T) {
 	board.arrows[1] = {id = 1, tail = {4, 0}, length = 3, dir = .Down}
 	board.arrows[2] = {id = 2, tail = {1, 5}, length = 2, dir = .Left}
 	testing.expect(t, g.rebuild_occupancy(&board))
-	testing.expect_value(t, g.arrow_head(&board.arrows[0]), g.Grid_Pos{2, 2})
+	testing.expect_value(t, g.arrow_head(&board, &board.arrows[0]), g.Grid_Pos{2, 2})
 	testing.expect(t, g.in_bounds(&board, {5, 5}))
 	testing.expect(t, !g.in_bounds(&board, {6, 5}))
 	blocker, distance, blocked := g.nearest_blocker(&board, 0)
@@ -46,17 +46,24 @@ test_generation_is_bounded_valid_and_replayable :: proc(t: ^testing.T) {
 				occupied := 0
 				total_turns := 0
 				longest := 0
+				short_count := 0
+				long_count := 0
+				short_limit := 10
+				if difficulty == .Medium do short_limit = 8
+				if difficulty == .Hard do short_limit = 6
 				for i in 0..<board.arrow_count {
 					a := &board.arrows[i]
 					occupied += a.length
 					longest = max(longest, a.length)
+					if a.length <= short_limit do short_count += 1
+					if a.length >= board.side do long_count += 1
 					testing.expect(t, a.length >= 2 && a.length <= g.MAX_ARROW_LENGTH)
 					for segment in 0..<a.length {
-						testing.expect(t, g.in_bounds(&board, g.arrow_cell(a, segment)))
+						testing.expect(t, g.in_bounds(&board, g.arrow_cell(&board, a, segment)))
 						if segment >= 2 {
-							p0 := g.arrow_cell(a, segment - 2)
-							p1 := g.arrow_cell(a, segment - 1)
-							p2 := g.arrow_cell(a, segment)
+							p0 := g.arrow_cell(&board, a, segment - 2)
+							p1 := g.arrow_cell(&board, a, segment - 1)
+							p2 := g.arrow_cell(&board, a, segment)
 							if p1.x - p0.x != p2.x - p1.x || p1.y - p0.y != p2.y - p1.y do total_turns += 1
 						}
 					}
@@ -64,7 +71,29 @@ test_generation_is_bounded_valid_and_replayable :: proc(t: ^testing.T) {
 				ratio := f32(occupied) / f32(board.side * board.side)
 				testing.expectf(t, ratio == 1, "board is not completely filled for %v %v seed %d", size, difficulty, seed)
 				testing.expectf(t, longest >= board.side, "board has no region-spanning arrow for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, short_count * 2 >= board.arrow_count, "small arrows are not the majority for %v %v seed %d", size, difficulty, seed)
+				testing.expectf(t, long_count >= 2, "board needs multiple long gate arrows for %v %v seed %d", size, difficulty, seed)
 				testing.expectf(t, total_turns >= board.side, "board is not maze-like enough for %v %v seed %d", size, difficulty, seed)
+				initial_moves := g.legal_move_count(&board)
+				if difficulty == .Medium do testing.expectf(t, initial_moves <= 4, "medium board exposes %d initial moves", initial_moves)
+				if difficulty == .Hard do testing.expectf(t, initial_moves <= 2, "hard board exposes %d initial moves", initial_moves)
+				replay := board
+				max_long_unlock := 0
+				for step in 0..<replay.arrow_count {
+					before: [g.MAX_ARROWS]bool
+					for i in 0..<replay.arrow_count do before[i] = !replay.arrows[i].removed && g.can_escape(&replay, i)
+					id := replay.solution[step]
+					was_long := replay.arrows[id].length >= replay.side
+					testing.expect(t, g.remove_arrow(&replay, id))
+					if was_long {
+						unlocked := 0
+						for i in 0..<replay.arrow_count {
+							if !replay.arrows[i].removed && !before[i] && g.can_escape(&replay, i) do unlocked += 1
+						}
+						max_long_unlock = max(max_long_unlock, unlocked)
+					}
+				}
+				testing.expectf(t, max_long_unlock > 0, "long arrows never unlock another arrow for %v %v seed %d", size, difficulty, seed)
 				testing.expectf(t, g.board_solvable(&board), "unsolvable board for %v %v seed %d", size, difficulty, seed)
 				testing.expectf(t, g.solution_clears(&board), "recorded solution failed for %v %v seed %d", size, difficulty, seed)
 			}

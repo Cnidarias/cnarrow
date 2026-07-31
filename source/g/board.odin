@@ -11,11 +11,12 @@ rebuild_occupancy :: proc(board: ^Board) -> bool {
 		if a.removed do continue
 		if a.length < 2 do return false
 		if a.path_count > 0 && a.path_count != a.length do return false
+		if a.path_count > 0 && (a.path_start < 0 || a.path_start + a.path_count > board.path_cell_count) do return false
 		for segment in 0..<a.length {
-			p := arrow_cell(a, segment)
+			p := arrow_cell(board, a, segment)
 			if !in_bounds(board, p) do return false
 			if segment > 0 {
-				previous := arrow_cell(a, segment - 1)
+				previous := arrow_cell(board, a, segment - 1)
 				if abs(p.x - previous.x) + abs(p.y - previous.y) != 1 do return false
 			}
 			index := cell_index(board, p)
@@ -30,8 +31,8 @@ nearest_blocker :: proc(board: ^Board, arrow_id: int) -> (blocker_id: int, dista
 	if arrow_id < 0 || arrow_id >= board.arrow_count do return -1, 0, false
 	a := &board.arrows[arrow_id]
 	if a.removed do return -1, 0, false
-	step := direction_step(arrow_direction(a))
-	p := pos_add(arrow_head(a), step)
+	step := direction_step(arrow_direction(board, a))
+	p := pos_add(arrow_head(board, a), step)
 	distance = 1
 	for in_bounds(board, p) {
 		owner := board.occupancy[cell_index(board, p)]
@@ -55,7 +56,7 @@ remove_arrow :: proc(board: ^Board, arrow_id: int) -> bool {
 	if a.removed || !can_escape(board, arrow_id) do return false
 	a.removed = true
 	for segment in 0..<a.length {
-		p := arrow_cell(a, segment)
+		p := arrow_cell(board, a, segment)
 		board.occupancy[cell_index(board, p)] = 0
 	}
 	return true

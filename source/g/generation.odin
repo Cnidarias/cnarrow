@@ -40,7 +40,7 @@ insert_arrow :: proc(board: ^Board, tail: Grid_Pos, length: int, dir: Direction)
 	id := board.arrow_count
 	board.arrows[id] = {id = id, tail = tail, length = length, dir = dir}
 	for segment in 0..<length {
-		p := arrow_cell(&board.arrows[id], segment)
+		p := arrow_cell(board, &board.arrows[id], segment)
 		board.occupancy[cell_index(board, p)] = id + 1
 	}
 	board.arrow_count += 1
@@ -48,7 +48,7 @@ insert_arrow :: proc(board: ^Board, tail: Grid_Pos, length: int, dir: Direction)
 	// future arrows are added. Reversing insertion order is therefore a proof.
 	if !can_escape(board, id) {
 		for segment in 0..<length {
-			p := arrow_cell(&board.arrows[id], segment)
+			p := arrow_cell(board, &board.arrows[id], segment)
 			board.occupancy[cell_index(board, p)] = 0
 		}
 		board.arrow_count -= 1
@@ -79,7 +79,7 @@ build_candidate :: proc(side: int, difficulty: Difficulty, seed: u64) -> Board {
 		for victim in 0..<board.arrow_count {
 			if !can_escape(&board, victim) do continue
 			victim_step := direction_step(board.arrows[victim].dir)
-			block_cell := pos_add(arrow_head(&board.arrows[victim]), victim_step)
+			block_cell := pos_add(arrow_head(&board, &board.arrows[victim]), victim_step)
 			for in_bounds(&board, block_cell) {
 				for raw_dir in 0..<4 {
 					dir := Direction(raw_dir)
@@ -347,24 +347,26 @@ snake_length :: proc(rng: ^Rng, difficulty: Difficulty, remaining: int) -> int {
 }
 
 append_snake_arrow :: proc(board: ^Board, spiral: []Grid_Pos, start, length: int) -> bool {
-	if length < 2 || length > MAX_ARROW_LENGTH || board.arrow_count >= MAX_ARROWS do return false
+	if length < 2 || length > MAX_ARROW_LENGTH || board.arrow_count >= MAX_ARROWS || board.path_cell_count + length > MAX_CELLS do return false
 	id := board.arrow_count
 	a := &board.arrows[id]
 	a.id = id
 	a.length = length
+	a.path_start = board.path_cell_count
 	a.path_count = length
 	// Store tail-to-head. The head faces backward through the already-cleared
 	// prefix of the spiral when the recorded solution is replayed.
 	for i in 0..<length {
 		p := spiral[start + length - 1 - i]
 		if !in_bounds(board, p) || board.occupancy[cell_index(board, p)] != 0 do return false
-		a.path[i] = {u8(p.x), u8(p.y)}
+		board.path_cells[a.path_start + i] = {u8(p.x), u8(p.y)}
 	}
-	a.tail = arrow_cell(a, 0)
-	a.dir = arrow_direction(a)
+	a.tail = arrow_cell(board, a, 0)
+	a.dir = arrow_direction(board, a)
 	for i in 0..<length {
-		board.occupancy[cell_index(board, arrow_cell(a, i))] = id + 1
+		board.occupancy[cell_index(board, arrow_cell(board, a, i))] = id + 1
 	}
+	board.path_cell_count += length
 	board.arrow_count += 1
 	return true
 }
@@ -615,6 +617,30 @@ maze_cut_is_exposed :: proc(path: ^[MAX_CELLS]Grid_Pos, order: ^[MAX_CELLS]int, 
 	return true
 }
 
+profiled_snake_length :: proc(rng: ^Rng, difficulty: Difficulty, arrow_index, remaining: int) -> (length: int, gate: bool) {
+	small_low, small_high := 3, 9
+	gate_low, gate_high := 18, 32
+	gate_interval := 10
+	switch difficulty {
+	case .Easy:
+		small_low, small_high = 4, 10
+		gate_low, gate_high, gate_interval = 16, 28, 11
+	case .Medium:
+		small_low, small_high = 3, 8
+		gate_low, gate_high, gate_interval = 24, 44, 8
+	case .Hard:
+		small_low, small_high = 2, 6
+		gate_low, gate_high, gate_interval = 32, MAX_ARROW_LENGTH, 6
+	}
+	gate = arrow_index == 0 || arrow_index % gate_interval == 0
+	if gate {
+		length = rng_range(rng, gate_low, gate_high + 1)
+	} else {
+		length = rng_range(rng, small_low, small_high + 1)
+	}
+	return min(length, remaining), gate
+}
+
 build_maze_snake_candidate :: proc(side: int, difficulty: Difficulty, seed: u64) -> Board {
 	board := Board{side = side, seed = seed}
 	rng := Rng{state = seed}
@@ -625,12 +651,12 @@ build_maze_snake_candidate :: proc(side: int, difficulty: Difficulty, seed: u64)
 	start := 0
 	for start < total {
 		remaining := total - start
-		if remaining <= MAX_ARROW_LENGTH {
+		desired, _ := profiled_snake_length(&rng, difficulty, board.arrow_count, remaining)
+		if remaining <= desired && remaining <= MAX_ARROW_LENGTH {
 			if !append_snake_arrow(&board, path[:], start, remaining) do return {}
 			board.solution[board.arrow_count - 1] = board.arrow_count - 1
 			break
 		}
-		desired := snake_length(&rng, difficulty, remaining)
 		best_length, best_distance := 0, MAX_ARROW_LENGTH + 1
 		upper := min(MAX_ARROW_LENGTH, remaining - 2)
 		for length in 2..=upper {
@@ -648,11 +674,66 @@ build_maze_snake_candidate :: proc(side: int, difficulty: Difficulty, seed: u64)
 	return board
 }
 
-generate_board :: proc(side: int, difficulty: Difficulty, seed: u64) -> Board {
-	for attempt in 0..<96 {
-		candidate := build_maze_snake_candidate(side, difficulty, seed + u64(attempt) * 0x9e3779b97f4a7c15)
-		if candidate.arrow_count > 0 && rebuild_occupancy(&candidate) && solution_clears(&candidate) do return candidate
+maze_candidate_score :: proc(source: ^Board, difficulty: Difficulty) -> int {
+	if source.arrow_count == 0 do return -1000000
+	short_limit, wanted_moves := 9, 5
+	switch difficulty {
+	case .Easy:   short_limit, wanted_moves = 10, 5
+	case .Medium: short_limit, wanted_moves = 8, 3
+	case .Hard:   short_limit, wanted_moves = 6, 1
 	}
+	short_count, long_count := 0, 0
+	for i in 0..<source.arrow_count {
+		length := source.arrows[i].length
+		if length <= short_limit do short_count += 1
+		if length >= source.side do long_count += 1
+	}
+	board := source^
+	initial_moves := legal_move_count(&board)
+	max_unlock, max_long_unlock := 0, 0
+	frontier_total := 0
+	for step in 0..<board.arrow_count {
+		before: [MAX_ARROWS]bool
+		for i in 0..<board.arrow_count {
+			before[i] = !board.arrows[i].removed && can_escape(&board, i)
+			if before[i] do frontier_total += 1
+		}
+		id := board.solution[step]
+		length := board.arrows[id].length
+		if !remove_arrow(&board, id) do return -1000000
+		unlocked := 0
+		for i in 0..<board.arrow_count {
+			if !board.arrows[i].removed && !before[i] && can_escape(&board, i) do unlocked += 1
+		}
+		max_unlock = max(max_unlock, unlocked)
+		if length >= source.side do max_long_unlock = max(max_long_unlock, unlocked)
+	}
+	score := source.arrow_count * 20 + short_count * 45 + long_count * 90
+	score -= abs(initial_moves - wanted_moves) * 240
+	if difficulty == .Medium && initial_moves > 4 do score -= (initial_moves - 4) * 2000
+	if difficulty == .Hard && initial_moves > 2 do score -= (initial_moves - 2) * 5000
+	score += max_unlock * 80 + max_long_unlock * 260
+	if max_long_unlock == 0 do score -= 10000
+	if difficulty == .Medium do score -= frontier_total / 3
+	if difficulty == .Hard do score -= frontier_total / 2
+	if short_count * 5 >= source.arrow_count * 3 do score += 500
+	if long_count >= 2 do score += 350
+	return score
+}
+
+generate_board :: proc(side: int, difficulty: Difficulty, seed: u64) -> Board {
+	best := Board{}
+	best_score := -1000001
+	for attempt in 0..<256 {
+		candidate := build_maze_snake_candidate(side, difficulty, seed + u64(attempt) * 0x9e3779b97f4a7c15)
+		if candidate.arrow_count == 0 || !rebuild_occupancy(&candidate) || !solution_clears(&candidate) do continue
+		score := maze_candidate_score(&candidate, difficulty)
+		if score > best_score {
+			best = candidate
+			best_score = score
+		}
+	}
+	if best.arrow_count > 0 do return best
 	// Exact deterministic fallback for exceptionally unlucky maze cuts.
 	return build_snake_candidate(side, difficulty, seed)
 }

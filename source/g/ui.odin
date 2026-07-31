@@ -54,7 +54,7 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 		a := &board.arrows[i]
 		if a.removed do continue
 		for segment in 0..<a.length {
-			p := arrow_cell(a, segment)
+			p := arrow_cell(board, a, segment)
 			x := layout.board.x + pad + f32(p.x) * spacing
 			y := layout.board.y + pad + f32(p.y) * spacing
 			dx, dy := point.x - x, point.y - y

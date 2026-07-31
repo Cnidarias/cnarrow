@@ -2,7 +2,9 @@
 
 Cnarrow is a calm, asset-free arrow-clearing puzzle written in Odin and drawn entirely with Raylib primitives. Select an arrow whose head has a clear path to the edge. Clear arrows slither away; blocked arrows gently compress and return. There is no penalty for trying.
 
-Puzzles completely tile the starting grid, then are checked with the same occupancy/collision logic used during play. A randomized spanning maze is converted into winding multi-turn arrows, including long paths that cross several areas. Carefully selected path cuts provide a guaranteed clearing order without leaving empty starting points. The three grid sizes (16×16, 20×20, 24×24) and Easy, Medium, and Hard presets configure the next puzzle.
+Puzzles completely tile the starting grid, then are checked with the same occupancy/collision logic used during play. A randomized spanning maze is converted into winding multi-turn arrows, including long paths that cross several areas. Carefully selected path cuts provide a guaranteed clearing order without leaving empty starting points. The three grid sizes (24×24, 32×32, 40×40) and Easy, Medium, and Hard presets configure the next puzzle.
+
+Most arrows are deliberately short, while occasional long “gate” arrows cross several regions and block multiple later paths. Difficulty changes that distribution and the opening frontier: Hard emphasizes very short pieces around stronger long gates and normally exposes no more than two initial moves; Medium allows up to four; Easy leaves a broader set of choices.
 
 ## Prerequisites
 
