@@ -53,6 +53,18 @@ test_arrow_hit_area_covers_full_stroke :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_portrait_layout_hides_settings_and_keeps_touch_targets :: proc(t: ^testing.T) {
+	layout := g.make_layout(975, 2110)
+	testing.expect(t, layout.compact)
+	testing.expect_value(t, layout.size_buttons, [3]rl.Rectangle{})
+	testing.expect_value(t, layout.diff_buttons, [3]rl.Rectangle{})
+	testing.expectf(t, layout.new_button.height >= 96, "compact New Puzzle target is only %.1f pixels high", layout.new_button.height)
+	panel := g.confirmation_panel(&layout)
+	cancel, confirm := g.confirmation_buttons(&layout, panel)
+	testing.expect(t, cancel.height >= 96 && confirm.height >= 96)
+}
+
+@(test)
 test_generation_is_bounded_valid_and_replayable :: proc(t: ^testing.T) {
 	for size in g.Grid_Size {
 		for difficulty in g.Difficulty {

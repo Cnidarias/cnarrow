@@ -8,24 +8,32 @@ Layout :: struct {
 	new_button:  rl.Rectangle,
 	size_buttons:[3]rl.Rectangle,
 	diff_buttons:[3]rl.Rectangle,
+	compact:     bool,
 }
 
 make_layout :: proc(width, height: f32) -> Layout {
 	landscape := width >= height * 1.12
 	margin := max(18.0, min(width, height) * 0.035)
 	layout: Layout
+	layout.compact = !landscape
 	if landscape {
 		panel_width := max(270.0, min(390.0, width * 0.29))
 		board_size := min(height - margin * 2, width - panel_width - margin * 3)
 		layout.board = {margin, (height - board_size) / 2, board_size, board_size}
 		layout.panel = {layout.board.x + board_size + margin, margin, panel_width, height - margin * 2}
 	} else {
-		panel_height := max(260.0, min(330.0, height * 0.36))
+		panel_height: f32 = 160
 		board_size := min(width - margin * 2, height - panel_height - margin * 3)
 		layout.board = {(width - board_size) / 2, margin, board_size, board_size}
 		layout.panel = {margin, layout.board.y + board_size + margin, width - margin * 2, panel_height}
 	}
 	p := layout.panel
+	if layout.compact {
+		button_h: f32 = min(132, p.height - 20)
+		button_w := min(p.width * 0.48, 420.0)
+		layout.new_button = {p.x + p.width - button_w, p.y + (p.height - button_h) / 2, button_w, button_h}
+		return layout
+	}
 	button_gap: f32 = 8
 	button_h: f32 = max(42, min(54, p.height * 0.15))
 	row_w := (p.width - button_gap * 2) / 3
@@ -97,8 +105,7 @@ handle_input :: proc(game: ^Game) {
 	layout := make_layout(f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if game.phase == .Confirm_New {
 		panel := confirmation_panel(&layout)
-		cancel := rl.Rectangle{panel.x + 22, panel.y + panel.height - 66, (panel.width - 54) / 2, 44}
-		confirm := rl.Rectangle{cancel.x + cancel.width + 10, cancel.y, cancel.width, cancel.height}
+		cancel, confirm := confirmation_buttons(&layout, panel)
 		if point_in(point, cancel) do game.phase = .Playing
 		if point_in(point, confirm) do start_puzzle(game)
 		return
@@ -108,9 +115,11 @@ handle_input :: proc(game: ^Game) {
 		return
 	}
 	if game.animation.kind != .None do return
-	for i in 0..<3 {
-		if point_in(point, layout.size_buttons[i]) { game.selected_size = Grid_Size(i); return }
-		if point_in(point, layout.diff_buttons[i]) { game.selected_difficulty = Difficulty(i); return }
+	if !layout.compact {
+		for i in 0..<3 {
+			if point_in(point, layout.size_buttons[i]) { game.selected_size = Grid_Size(i); return }
+			if point_in(point, layout.diff_buttons[i]) { game.selected_difficulty = Difficulty(i); return }
+		}
 	}
 	if point_in(point, layout.new_button) { request_new_puzzle(game); return }
 	id := arrow_at_point(game, point, &layout)
@@ -120,10 +129,26 @@ handle_input :: proc(game: ^Game) {
 confirmation_panel :: proc(layout: ^Layout) -> rl.Rectangle {
 	w: f32 = min(420, layout.board.width * 0.88)
 	h: f32 = 200
+	if layout.compact {
+		w = layout.board.width * 0.94
+		h = min(360, layout.board.height * 0.55)
+	}
 	return {layout.board.x + (layout.board.width - w) / 2, layout.board.y + (layout.board.height - h) / 2, w, h}
+}
+
+confirmation_buttons :: proc(layout: ^Layout, panel: rl.Rectangle) -> (cancel, confirm: rl.Rectangle) {
+	height: f32 = 44
+	bottom: f32 = 22
+	if layout.compact { height = min(110, panel.height * 0.3); bottom = 28 }
+	cancel = {panel.x + 22, panel.y + panel.height - height - bottom, (panel.width - 54) / 2, height}
+	confirm = {cancel.x + cancel.width + 10, cancel.y, cancel.width, cancel.height}
+	return
 }
 
 completion_button :: proc(layout: ^Layout) -> rl.Rectangle {
 	panel := confirmation_panel(layout)
-	return {panel.x + 24, panel.y + panel.height - 68, panel.width - 48, 46}
+	height: f32 = 46
+	bottom: f32 = 22
+	if layout.compact { height = min(110, panel.height * 0.3); bottom = 28 }
+	return {panel.x + 24, panel.y + panel.height - height - bottom, panel.width - 48, height}
 }

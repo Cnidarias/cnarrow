@@ -22,8 +22,13 @@ odin build "$project_dir/source/web" \
   -out:"$project_dir/build/cnarrow.obj" \
   -o:speed
 
-emcc "$project_dir/build/cnarrow.obj" "$raylib_web" \
+emcc -c "$project_dir/web/odin-raylib-shim.c" \
+  -o "$project_dir/build/odin-raylib-shim.o"
+
+emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/odin-raylib-shim.o" \
+  -Wl,--whole-archive "$raylib_web" -Wl,--no-whole-archive \
   -o "$project_dir/build/cnarrow.js" \
+  --js-library "$project_dir/web/odin-emscripten-library.js" \
   -sUSE_GLFW=3 \
   -sALLOW_MEMORY_GROWTH=1 \
   -sMIN_WEBGL_VERSION=2 \
@@ -31,7 +36,7 @@ emcc "$project_dir/build/cnarrow.obj" "$raylib_web" \
   -sENVIRONMENT=web \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createCnarrowModule \
-  -sEXPORTED_FUNCTIONS='["_main","_cnarrow_start","_cnarrow_frame","_cnarrow_resize","_cnarrow_shutdown"]' \
+  -sEXPORTED_FUNCTIONS='["_cnarrow_start","_cnarrow_frame","_cnarrow_resize","_cnarrow_shutdown"]' \
   -sNO_EXIT_RUNTIME=1 \
   -sASSERTIONS=1
 

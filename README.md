@@ -42,6 +42,17 @@ Activate Emscripten first (usually `source /path/to/emsdk/emsdk_env.sh`), then r
 
 Open <http://localhost:8000>. A local HTTP server is required; opening `index.html` directly from disk will not reliably load WebAssembly. The HTML shell handles touch input, responsive canvas resizing, safe areas, high-DPI backing resolution, loading feedback, and startup errors. The generated module allows memory growth and targets WebGL 2 through Emscripten's GLFW support.
 
+### Docker
+
+The multi-stage image installs the pinned Odin and Emscripten toolchains, builds the browser bundle, and copies only the static output into an unprivileged nginx image:
+
+```sh
+docker build -t cnarrow-web .
+docker run --rm -p 8080:8080 cnarrow-web
+```
+
+Open <http://localhost:8080>. The container includes a health check and serves WebAssembly with the correct MIME type. Portrait layouts hide the size and difficulty selectors, leaving only puzzle status and a touch-sized New Puzzle button below the enlarged board.
+
 ## Project layout
 
 - `source/g/`: board model, collision, generation, animations, UI, and rendering

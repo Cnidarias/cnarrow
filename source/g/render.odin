@@ -92,6 +92,12 @@ draw_settings :: proc(game: ^Game, layout: ^Layout) {
 	title_size := int(max(27.0, min(42.0, p.width * 0.12)))
 	rl.DrawText("CNARROW", i32(p.x), i32(p.y + 4), i32(title_size), INK)
 	label_size := int(max(15.0, min(19.0, p.width * 0.055)))
+	if layout.compact {
+		stats := fmt.ctprintf("%d left  |  %d blocked", game.board.arrow_count - game.removed_count, game.blocked_taps)
+		rl.DrawText(stats, i32(p.x), i32(p.y + 58), i32(label_size), SAGE_DARK)
+		draw_button(layout.new_button, "New Puzzle")
+		return
+	}
 	rl.DrawText("NEXT GRID", i32(p.x), i32(layout.size_buttons[0].y - 25), i32(label_size), SAGE_DARK)
 	rl.DrawText("DIFFICULTY", i32(p.x), i32(layout.diff_buttons[0].y - 25), i32(label_size), SAGE_DARK)
 	size_labels := [3]cstring{"24 x 24", "32 x 32", "40 x 40"}
@@ -109,10 +115,11 @@ draw_confirmation :: proc(game: ^Game, layout: ^Layout) {
 	rl.DrawRectangle(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight(), {29, 35, 31, 80})
 	panel := confirmation_panel(layout)
 	rl.DrawRectangleRounded(panel, 0.12, 10, SOFT_WHITE)
-	draw_text_centered("Start a new puzzle?", {panel.x, panel.y + 24, panel.width, 34}, 25, INK)
-	draw_text_centered("Your current progress will be cleared.", {panel.x, panel.y + 69, panel.width, 26}, 16, SAGE_DARK)
-	cancel := rl.Rectangle{panel.x + 22, panel.y + panel.height - 66, (panel.width - 54) / 2, 44}
-	confirm := rl.Rectangle{cancel.x + cancel.width + 10, cancel.y, cancel.width, cancel.height}
+	title_size, body_size := 25, 16
+	if layout.compact { title_size, body_size = 46, 28 }
+	draw_text_centered("Start a new puzzle?", {panel.x, panel.y + 24, panel.width, f32(title_size + 10)}, title_size, INK)
+	draw_text_centered("Your current progress will be cleared.", {panel.x, panel.y + 44 + f32(title_size), panel.width, f32(body_size + 10)}, body_size, SAGE_DARK)
+	cancel, confirm := confirmation_buttons(layout, panel)
 	draw_button(cancel, "Keep Playing")
 	draw_button(confirm, "New Puzzle", true)
 }
@@ -127,11 +134,13 @@ draw_completion :: proc(game: ^Game, layout: ^Layout) {
 	}
 	panel := confirmation_panel(layout)
 	rl.DrawRectangleRounded(panel, 0.12, 10, SOFT_WHITE)
-	draw_text_centered("Puzzle cleared", {panel.x, panel.y + 20, panel.width, 36}, 29, INK)
+	title_size, stats_size := 29, 17
+	if layout.compact { title_size, stats_size = 48, 28 }
+	draw_text_centered("Puzzle cleared", {panel.x, panel.y + 20, panel.width, f32(title_size + 8)}, title_size, INK)
 	minutes := int(game.elapsed) / 60
 	seconds := int(game.elapsed) % 60
 	stats := fmt.ctprintf("%02d:%02d   |   %d blocked taps", minutes, seconds, game.blocked_taps)
-	draw_text_centered(stats, {panel.x, panel.y + 70, panel.width, 28}, 17, SAGE_DARK)
+	draw_text_centered(stats, {panel.x, panel.y + 38 + f32(title_size), panel.width, f32(stats_size + 8)}, stats_size, SAGE_DARK)
 	draw_button(completion_button(layout), "Next Puzzle", true)
 }
 
