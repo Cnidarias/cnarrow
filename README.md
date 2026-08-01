@@ -61,7 +61,7 @@ docker compose up --build
 
 ### GitHub Pages
 
-The repository includes a GitHub Actions workflow that builds the static browser bundle with the Docker builder stage and deploys it to GitHub Pages on pushes to `main`:
+The repository includes a GitHub Actions workflow that builds the static browser bundle with the Docker builder stage and deploys it to GitHub Pages on pushes to `master`:
 
 ```sh
 .github/workflows/pages.yml
