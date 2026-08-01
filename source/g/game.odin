@@ -3,10 +3,11 @@ package g
 import rl "vendor:raylib"
 
 start_puzzle :: proc(game: ^Game) {
-	game.seed_counter += 1
+	seed_rng := Rng{state = game.seed_counter}
+	game.seed_counter = rng_next(&seed_rng)
 	game.applied_size = game.selected_size
 	game.applied_difficulty = game.selected_difficulty
-	seed := game.seed_counter * 0x9e3779b97f4a7c15 + u64(game.selected_size) * 97 + u64(game.selected_difficulty) * 7919
+	seed := game.seed_counter + u64(game.selected_size) * 97 + u64(game.selected_difficulty) * 7919
 	game.board = generate_board(grid_side(game.selected_size), game.selected_difficulty, seed)
 	game.animation = {}
 	game.phase = .Playing

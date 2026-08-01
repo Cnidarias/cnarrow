@@ -65,6 +65,16 @@ test_portrait_layout_hides_settings_and_keeps_touch_targets :: proc(t: ^testing.
 }
 
 @(test)
+test_new_puzzle_advances_to_a_different_board :: proc(t: ^testing.T) {
+	game: g.Game
+	g.game_init(&game, 0x434e4152524f57)
+	first := game.board
+	g.start_puzzle(&game)
+	testing.expect(t, first.seed != game.board.seed)
+	testing.expect(t, first.path_cells != game.board.path_cells)
+}
+
+@(test)
 test_generation_is_bounded_valid_and_replayable :: proc(t: ^testing.T) {
 	for size in g.Grid_Size {
 		for difficulty in g.Difficulty {
