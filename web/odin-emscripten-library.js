@@ -12,5 +12,5 @@ mergeInto(LibraryManager.library, {
   },
   write: function (_fd, _pointer, length) {
     return length;
-  }
+  },
 });

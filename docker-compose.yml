@@ -1,0 +1,7 @@
+services:
+  cnarrow-web:
+    build:
+      context: .
+    image: cnarrow-web:local
+    ports:
+      - "8080:8080"

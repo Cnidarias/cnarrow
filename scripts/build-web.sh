@@ -19,20 +19,20 @@ odin build "$project_dir/source/web" \
   -collection:src="$project_dir/source" \
   -target:js_wasm32 \
   -build-mode:obj \
+  -define:RAYLIB_WASM_LIB=env.o \
   -out:"$project_dir/build/cnarrow.obj" \
   -o:speed
 
-emcc -c "$project_dir/web/odin-raylib-shim.c" \
-  -o "$project_dir/build/odin-raylib-shim.o"
+emcc -c "$project_dir/web/emscripten-allocator.c" \
+  -o "$project_dir/build/emscripten-allocator.o"
 
-emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/odin-raylib-shim.o" \
+emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/emscripten-allocator.o" \
   -Wl,--whole-archive "$raylib_web" -Wl,--no-whole-archive \
   -o "$project_dir/build/cnarrow.js" \
   --js-library "$project_dir/web/odin-emscripten-library.js" \
   -sUSE_GLFW=3 \
-  -sALLOW_MEMORY_GROWTH=1 \
-  -sMIN_WEBGL_VERSION=2 \
-  -sMAX_WEBGL_VERSION=2 \
+  -sINITIAL_MEMORY=67108864 \
+  -sSTACK_SIZE=2097152 \
   -sENVIRONMENT=web \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createCnarrowModule \
@@ -41,4 +41,5 @@ emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/odin-raylib-shim.o" \
   -sASSERTIONS=1
 
 cp "$project_dir/web/index.html" "$project_dir/build/index.html"
+cp "$odin_root/core/sys/wasm/js/odin.js" "$project_dir/build/odin.js"
 echo "Built browser game in $project_dir/build"

@@ -40,7 +40,7 @@ Activate Emscripten first (usually `source /path/to/emsdk/emsdk_env.sh`), then r
 ./scripts/serve-web.sh
 ```
 
-Open <http://localhost:8000>. A local HTTP server is required; opening `index.html` directly from disk will not reliably load WebAssembly. The HTML shell handles touch input, responsive canvas resizing, safe areas, high-DPI backing resolution, loading feedback, and startup errors. The generated module allows memory growth and targets WebGL 2 through Emscripten's GLFW support.
+Open <http://localhost:8000>. A local HTTP server is required; opening `index.html` directly from disk will not reliably load WebAssembly. The HTML shell handles touch input, responsive canvas resizing, safe areas, high-DPI backing resolution, loading feedback, and startup errors. The generated module uses a fixed 64 MiB wasm memory and Emscripten's GLFW/raylib WebGL path.
 
 ### Docker
 
@@ -52,6 +52,22 @@ docker run --rm -p 8080:8080 cnarrow-web
 ```
 
 Open <http://localhost:8080>. The container includes a health check and serves WebAssembly with the correct MIME type. Portrait layouts hide the size and difficulty selectors, leaving only puzzle status and a touch-sized New Puzzle button below the enlarged board.
+
+Or use Compose:
+
+```sh
+docker compose up --build
+```
+
+### GitHub Pages
+
+The repository includes a GitHub Actions workflow that builds the static browser bundle with the Docker builder stage and deploys it to GitHub Pages on pushes to `main`:
+
+```sh
+.github/workflows/pages.yml
+```
+
+In the repository settings, set Pages to use GitHub Actions as the publishing source.
 
 ## Project layout
 

@@ -1,6 +1,7 @@
 package web
 
 import "src:g"
+import "core:mem"
 import "base:runtime"
 import rl "vendor:raylib"
 
@@ -12,7 +13,10 @@ web_context: runtime.Context
 cnarrow_start :: proc "c" (width, height: i32) {
 	if web_started do return
 	web_context = runtime.default_context()
+	web_context.allocator = emscripten_allocator()
 	context = web_context
+	runtime.init_global_temporary_allocator(1 * mem.Megabyte)
+	web_context = context
 	rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
 	rl.InitWindow(width, height, "Cnarrow")
 	rl.SetTargetFPS(60)

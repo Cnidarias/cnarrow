@@ -48,6 +48,7 @@
 <body>
   <main id="game-wrap"><canvas id="canvas" tabindex="0" aria-label="Cnarrow puzzle game"></canvas></main>
   <div id="status" role="status"><strong>Loading Cnarrow…</strong><small>Preparing the puzzle board</small></div>
+  <script src="odin.js"></script>
   <script src="cnarrow.js"></script>
   <script>
     const canvas = document.getElementById('canvas');
@@ -84,7 +85,23 @@
     canvas.addEventListener('contextmenu', event => event.preventDefault());
     new ResizeObserver(resize).observe(wrap);
 
-    createCnarrowModule({ canvas }).then(module => {
+    createCnarrowModule({
+      canvas,
+      instantiateWasm(imports, receiveInstance) {
+        const wasmMemory = new odin.WasmMemoryInterface();
+        wasmMemory.setIntSize(4);
+        const odinImports = odin.setupDefaultImports(wasmMemory, null, imports.env?.memory);
+        imports.odin_env = odinImports.odin_env;
+        imports.env = { ...odinImports.env, ...imports.env };
+        return WebAssembly.instantiateStreaming(fetch('cnarrow.wasm'), imports).then(result => {
+          const instance = result.instance || result;
+          if (instance.exports.memory) wasmMemory.setMemory(instance.exports.memory);
+          wasmMemory.setExports(instance.exports);
+          receiveInstance(instance, result.module);
+          return instance.exports;
+        });
+      },
+    }).then(module => {
       game = module;
       resize();
       game._cnarrow_start(pixelWidth, pixelHeight);
