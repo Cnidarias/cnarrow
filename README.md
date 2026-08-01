@@ -51,7 +51,7 @@ docker build -t cnarrow-web .
 docker run --rm -p 8080:8080 cnarrow-web
 ```
 
-Open <http://localhost:8080>. The container includes a health check and serves WebAssembly with the correct MIME type. Portrait layouts hide the size and difficulty selectors, leaving only puzzle status and a touch-sized New Puzzle button below the enlarged board.
+Open <http://localhost:8080>. The container includes a health check and serves WebAssembly with the correct MIME type. Portrait layouts put the title, puzzle status, and a touch-sized New Puzzle button above the centered board. Pinch the board with two fingers to zoom and pan it for more precise taps.
 
 Or use Compose:
 

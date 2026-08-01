@@ -24,8 +24,9 @@ make_layout :: proc(width, height: f32) -> Layout {
 	} else {
 		panel_height: f32 = 160
 		board_size := min(width - margin * 2, height - panel_height - margin * 3)
-		layout.board = {(width - board_size) / 2, margin, board_size, board_size}
-		layout.panel = {margin, layout.board.y + board_size + margin, width - margin * 2, panel_height}
+		layout.panel = {margin, margin, width - margin * 2, panel_height}
+		board_y := max(layout.panel.y + panel_height + margin, (height - board_size) / 2)
+		layout.board = {(width - board_size) / 2, board_y, board_size, board_size}
 	}
 	p := layout.panel
 	if layout.compact {
@@ -44,6 +45,24 @@ make_layout :: proc(width, height: f32) -> Layout {
 		layout.diff_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row2, row_w, button_h}
 	}
 	layout.new_button = {p.x, min(p.y + p.height - button_h, row2 + button_h + 48), p.width, button_h}
+	return layout
+}
+
+game_layout :: proc(game: ^Game, width, height: f32) -> Layout {
+	layout := make_layout(width, height)
+	if !layout.compact do return layout
+	zoom := max(1.0, min(3.0, game.board_zoom))
+	base := layout.board
+	size := base.width * zoom
+	max_pan := (size - base.width) / 2
+	pan_x := max(-max_pan, min(max_pan, game.board_pan[0]))
+	pan_y := max(-max_pan, min(max_pan, game.board_pan[1]))
+	layout.board = {
+		base.x + (base.width - size) / 2 + pan_x,
+		base.y + (base.height - size) / 2 + pan_y,
+		size,
+		size,
+	}
 	return layout
 }
 
@@ -100,9 +119,10 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 }
 
 handle_input :: proc(game: ^Game) {
+	if game.input_suppressed do return
 	point, pressed := pointer_pressed()
 	if !pressed do return
-	layout := make_layout(f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
+	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if game.phase == .Confirm_New {
 		panel := confirmation_panel(&layout)
 		cancel, confirm := confirmation_buttons(&layout, panel)
@@ -122,6 +142,7 @@ handle_input :: proc(game: ^Game) {
 		}
 	}
 	if point_in(point, layout.new_button) { request_new_puzzle(game); return }
+	if layout.compact && point.y < layout.panel.y + layout.panel.height do return
 	id := arrow_at_point(game, point, &layout)
 	if id >= 0 do start_arrow_animation(game, id)
 }

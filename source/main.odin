@@ -1,6 +1,7 @@
 package game
 
 import "g"
+import "core:time"
 import rl "vendor:raylib"
 
 main :: proc() {
@@ -11,7 +12,7 @@ main :: proc() {
 
 	rl.SetTargetFPS(60)
 
-	g.game_init(&g.game)
+	g.game_init(&g.game, u64(time.to_unix_nanoseconds(time.now())))
 	defer g.game_destroy(&g.game)
 
 	for !rl.WindowShouldClose() {

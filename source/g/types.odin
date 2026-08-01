@@ -58,6 +58,9 @@ Game :: struct {
 	removed_count:      int,
 	seed_counter:       u64,
 	celebration_time:   f32,
+	board_zoom:         f32,
+	board_pan:          [2]f32,
+	input_suppressed:   bool,
 }
 
 game: Game

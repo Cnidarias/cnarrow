@@ -16,11 +16,12 @@ start_puzzle :: proc(game: ^Game) {
 	game.celebration_time = 0
 }
 
-game_init :: proc(game: ^Game) {
+game_init :: proc(game: ^Game, seed: u64) {
 	game^ = {
 		selected_size = .Medium,
 		selected_difficulty = .Medium,
-		seed_counter = 0x434e4152524f57,
+		seed_counter = seed,
+		board_zoom = 1,
 	}
 	start_puzzle(game)
 }
@@ -49,4 +50,9 @@ pointer_pressed :: proc() -> (rl.Vector2, bool) {
 	if rl.IsMouseButtonPressed(.LEFT) do return rl.GetMousePosition(), true
 	if rl.GetTouchPointCount() > 0 do return rl.GetTouchPosition(0), true
 	return {}, false
+}
+
+set_board_view :: proc(game: ^Game, zoom, pan_x, pan_y: f32) {
+	game.board_zoom = max(1.0, min(3.0, zoom))
+	game.board_pan = {pan_x, pan_y}
 }

@@ -10,7 +10,7 @@ web_started: bool
 web_context: runtime.Context
 
 @(export)
-cnarrow_start :: proc "c" (width, height: i32) {
+cnarrow_start :: proc "c" (width, height: i32, seed: f64) {
 	if web_started do return
 	web_context = runtime.default_context()
 	web_context.allocator = emscripten_allocator()
@@ -20,7 +20,7 @@ cnarrow_start :: proc "c" (width, height: i32) {
 	rl.SetConfigFlags({.WINDOW_HIGHDPI, .MSAA_4X_HINT})
 	rl.InitWindow(width, height, "Cnarrow")
 	rl.SetTargetFPS(60)
-	g.game_init(&web_game)
+	g.game_init(&web_game, u64(seed))
 	web_started = true
 }
 
@@ -41,6 +41,18 @@ cnarrow_frame :: proc "c" () {
 cnarrow_resize :: proc "c" (width, height: i32) {
 	context = web_context
 	if web_started do rl.SetWindowSize(width, height)
+}
+
+@(export)
+cnarrow_set_board_view :: proc "c" (zoom, pan_x, pan_y: f32) {
+	context = web_context
+	if web_started do g.set_board_view(&web_game, zoom, pan_x, pan_y)
+}
+
+@(export)
+cnarrow_set_input_suppressed :: proc "c" (suppressed: i32) {
+	context = web_context
+	if web_started do web_game.input_suppressed = suppressed != 0
 }
 
 @(export)

@@ -59,6 +59,49 @@
     let frameHandle = 0;
     let pixelWidth = 0;
     let pixelHeight = 0;
+    let boardZoom = 1;
+    let boardPanX = 0;
+    let boardPanY = 0;
+    let pinch = null;
+
+    function touchPair(event) {
+      if (event.touches.length < 2) return null;
+      const a = event.touches[0];
+      const b = event.touches[1];
+      const scale = Math.min(window.devicePixelRatio || 1, 2.5);
+      return {
+        x: ((a.clientX + b.clientX) / 2 - canvas.getBoundingClientRect().left) * scale,
+        y: ((a.clientY + b.clientY) / 2 - canvas.getBoundingClientRect().top) * scale,
+        distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+      };
+    }
+
+    canvas.addEventListener('touchstart', event => {
+      const pair = touchPair(event);
+      if (!pair || !started) return;
+      event.preventDefault();
+      pinch = { ...pair, zoom: boardZoom, panX: boardPanX, panY: boardPanY };
+      game._cnarrow_set_input_suppressed(1);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', event => {
+      const pair = touchPair(event);
+      if (!pair || !pinch || !started) return;
+      event.preventDefault();
+      boardZoom = Math.max(1, Math.min(3, pinch.zoom * pair.distance / Math.max(1, pinch.distance)));
+      boardPanX = pinch.panX + pair.x - pinch.x;
+      boardPanY = pinch.panY + pair.y - pinch.y;
+      game._cnarrow_set_board_view(boardZoom, boardPanX, boardPanY);
+    }, { passive: false });
+
+    function finishPinch(event) {
+      if (!pinch || event.touches.length > 0 || !started) return;
+      pinch = null;
+      game._cnarrow_set_input_suppressed(0);
+    }
+
+    canvas.addEventListener('touchend', finishPinch, { passive: false });
+    canvas.addEventListener('touchcancel', finishPinch, { passive: false });
 
     function canvasPixels() {
       const rect = wrap.getBoundingClientRect();
@@ -104,7 +147,7 @@
     }).then(module => {
       game = module;
       resize();
-      game._cnarrow_start(pixelWidth, pixelHeight);
+      game._cnarrow_start(pixelWidth, pixelHeight, Date.now());
       started = true;
       status.classList.add('ready');
       canvas.focus({ preventScroll: true });

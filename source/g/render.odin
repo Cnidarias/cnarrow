@@ -90,6 +90,7 @@ draw_board :: proc(game: ^Game, layout: ^Layout) {
 draw_settings :: proc(game: ^Game, layout: ^Layout) {
 	p := layout.panel
 	title_size := int(max(27.0, min(42.0, p.width * 0.12)))
+	if layout.compact do title_size = int(max(27.0, min(32.0, p.width * 0.085)))
 	rl.DrawText("CNARROW", i32(p.x), i32(p.y + 4), i32(title_size), INK)
 	label_size := int(max(15.0, min(19.0, p.width * 0.055)))
 	if layout.compact {
@@ -145,8 +146,13 @@ draw_completion :: proc(game: ^Game, layout: ^Layout) {
 }
 
 game_draw :: proc(game: ^Game, dt: f32) {
-	layout := make_layout(f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
+	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
+	if layout.compact {
+		play_top := i32(layout.panel.y + layout.panel.height)
+		rl.BeginScissorMode(0, play_top, rl.GetScreenWidth(), rl.GetScreenHeight() - play_top)
+	}
 	draw_board(game, &layout)
+	if layout.compact do rl.EndScissorMode()
 	draw_settings(game, &layout)
 	if game.phase == .Confirm_New do draw_confirmation(game, &layout)
 	if game.phase == .Complete do draw_completion(game, &layout)
