@@ -53,6 +53,8 @@ docker run --rm -p 8080:8080 cnarrow-web
 
 Open <http://localhost:8080>. The container includes a health check and serves WebAssembly with the correct MIME type. Portrait layouts put the title and puzzle status above the centered board, with touch-sized New Puzzle and Auto Solve buttons anchored at the bottom. Auto Solve replays the validated solution one arrow at a time so each animation remains visible. Pinch with two fingers to zoom, then drag with one finger to pan the board for more precise taps.
 
+The web build is an installable PWA and caches the complete game for offline play. On Android, use the browser's **Install app** action. On iPhone or iPad, open the Share menu and choose **Add to Home Screen**. Each deployed commit uses a new cache version; updates take control without reloading a puzzle already in progress.
+
 Or use Compose:
 
 ```sh

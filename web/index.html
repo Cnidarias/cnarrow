@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <meta name="theme-color" content="#d3e0cd">
+  <meta name="application-name" content="Cnarrow">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Cnarrow">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <title>Cnarrow</title>
@@ -232,6 +238,14 @@
       if (started) game._cnarrow_shutdown();
       started = false;
     }, { once: true });
+
+    if ('serviceWorker' in navigator) {
+      addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+          .then(registration => registration.update())
+          .catch(error => console.warn('Offline support could not start.', error));
+      }, { once: true });
+    }
   </script>
 </body>
 </html>

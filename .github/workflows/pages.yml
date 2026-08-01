@@ -32,6 +32,9 @@ jobs:
           docker rm "$container_id"
           touch ./pages/.nojekyll
 
+      - name: Validate installable offline bundle
+        run: ./scripts/check-pwa.sh ./pages
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
