@@ -51,5 +51,8 @@ emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/emscripten-allocator.o
   -sASSERTIONS=1
 
 sed "s/__BUILD_COMMIT__/$build_commit/g" "$project_dir/web/index.html" > "$project_dir/build/index.html"
+cp "$project_dir/web/favicon.png" "$project_dir/build/favicon.png"
+cp "$project_dir/web/apple-touch-icon.png" "$project_dir/build/apple-touch-icon.png"
+cp "$project_dir/web/icon-512.png" "$project_dir/build/icon-512.png"
 cp "$odin_root/core/sys/wasm/js/odin.js" "$project_dir/build/odin.js"
 echo "Built browser game $build_commit in $project_dir/build"
