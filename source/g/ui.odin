@@ -81,6 +81,13 @@ point_in :: proc(point: rl.Vector2, rect: rl.Rectangle) -> bool {
 	return rl.CheckCollisionPointRec(point, rect)
 }
 
+visible_play_area :: proc(layout: ^Layout) -> rl.Rectangle {
+	if !layout.compact do return layout.board
+	width := layout.panel.x * 2 + layout.panel.width
+	top := layout.panel.y + layout.panel.height
+	return {0, top, width, layout.new_button.y - top}
+}
+
 point_segment_distance_squared :: proc(point, start, end: rl.Vector2) -> f32 {
 	dx, dy := end.x - start.x, end.y - start.y
 	length_squared := dx * dx + dy * dy
@@ -180,11 +187,13 @@ handle_input :: proc(game: ^Game) {
 confirmation_panel :: proc(layout: ^Layout) -> rl.Rectangle {
 	w: f32 = min(420, layout.board.width * 0.88)
 	h: f32 = 200
+	area := layout.board
 	if layout.compact {
-		w = layout.board.width * 0.94
-		h = min(360, layout.board.height * 0.55)
+		area = visible_play_area(layout)
+		w = area.width * 0.94
+		h = min(360, area.height * 0.55)
 	}
-	return {layout.board.x + (layout.board.width - w) / 2, layout.board.y + (layout.board.height - h) / 2, w, h}
+	return {area.x + (area.width - w) / 2, area.y + (area.height - h) / 2, w, h}
 }
 
 confirmation_buttons :: proc(layout: ^Layout, panel: rl.Rectangle) -> (cancel, confirm: rl.Rectangle) {

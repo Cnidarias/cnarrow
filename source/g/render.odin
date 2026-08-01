@@ -133,12 +133,16 @@ draw_confirmation :: proc(game: ^Game, layout: ^Layout) {
 }
 
 draw_completion :: proc(game: ^Game, layout: ^Layout) {
-	// Sparse drifting dots keep the celebration quiet and asset-free.
-	for i in 0..<18 {
-		phase := game.celebration_time * (0.22 + f32(i % 4) * 0.03) + f32(i) * 0.371
-		x := layout.board.x + f32((i * 47) % 101) / 100.0 * layout.board.width
-		y := layout.board.y + f32(math.mod(f64(phase), 1.0)) * layout.board.height
-		rl.DrawCircleV({x, y}, 2.5 + f32(i % 3), {111, 139, 111, 120})
+	area := visible_play_area(layout)
+	colors := [3]rl.Color{{111, 139, 111, 230}, {151, 174, 148, 245}, {244, 247, 241, 250}}
+	base_radius := max(7.0, min(12.0, area.width * 0.012))
+	for i in 0..<30 {
+		phase := game.celebration_time * (0.25 + f32(i % 5) * 0.035) + f32(i) * 0.371
+		x := area.x + (0.04 + f32((i * 47) % 93) / 100.0) * area.width
+		y := area.y + f32(math.mod(f64(phase), 1.0)) * area.height
+		radius := base_radius + f32(i % 3) * 2
+		rl.DrawCircleV({x, y}, radius, colors[i % len(colors)])
+		rl.DrawCircleV({x, y}, radius * 0.38, {244, 247, 241, 210})
 	}
 	panel := confirmation_panel(layout)
 	rl.DrawRectangleRounded(panel, 0.12, 10, SOFT_WHITE)
@@ -155,9 +159,8 @@ draw_completion :: proc(game: ^Game, layout: ^Layout) {
 game_draw :: proc(game: ^Game, dt: f32) {
 	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if layout.compact {
-		play_top := i32(layout.panel.y + layout.panel.height)
-		play_bottom := i32(layout.new_button.y)
-		rl.BeginScissorMode(0, play_top, rl.GetScreenWidth(), play_bottom - play_top)
+		play := visible_play_area(&layout)
+		rl.BeginScissorMode(i32(play.x), i32(play.y), i32(play.width), i32(play.height))
 	}
 	draw_board(game, &layout)
 	if layout.compact do rl.EndScissorMode()

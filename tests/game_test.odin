@@ -80,6 +80,18 @@ test_zoomed_board_pans_through_the_full_play_area :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_completion_overlay_ignores_board_zoom_and_pan :: proc(t: ^testing.T) {
+	game := g.Game{board_zoom = 3, board_pan = {-10000, 10000}}
+	layout := g.game_layout(&game, 975, 2110)
+	area := g.visible_play_area(&layout)
+	panel := g.confirmation_panel(&layout)
+	testing.expect(t, panel.x >= area.x && panel.y >= area.y)
+	testing.expect(t, panel.x + panel.width <= area.x + area.width)
+	testing.expect(t, panel.y + panel.height <= area.y + area.height)
+	testing.expect_value(t, area.width, 975.0)
+}
+
+@(test)
 test_portrait_layout_hides_settings_and_keeps_touch_targets :: proc(t: ^testing.T) {
 	layout := g.make_layout(975, 2110)
 	testing.expect(t, layout.compact)
