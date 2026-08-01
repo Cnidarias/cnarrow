@@ -69,14 +69,19 @@ test_portrait_arrow_hit_area_accepts_coarse_taps :: proc(t: ^testing.T) {
 
 @(test)
 test_zoomed_board_pans_through_the_full_play_area :: proc(t: ^testing.T) {
+	anchored := g.Game{board_zoom = 2}
+	anchored_layout := g.game_layout(&anchored, 975, 2110)
+	anchored_top := anchored_layout.panel.y + anchored_layout.panel.height
+	anchored_content_top := anchored_layout.board.y + anchored_layout.board.width * 0.065
+	testing.expectf(t, anchored_content_top <= anchored_top + 0.01, "2x puzzle content leaves %.1f pixels unused above it", anchored_content_top - anchored_top)
+
 	game := g.Game{board_zoom = 2, board_pan = {10000, 10000}}
-	layout := g.game_layout(&game, 975, 2110)
-	testing.expect(t, layout.board.x <= 0)
-	testing.expect(t, layout.board.y <= layout.panel.y + layout.panel.height)
+	down_layout := g.game_layout(&game, 975, 2110)
+	testing.expect(t, down_layout.board.x <= 0)
 	game.board_pan = {-10000, -10000}
-	layout = g.game_layout(&game, 975, 2110)
-	testing.expect(t, layout.board.x + layout.board.width >= 975)
-	testing.expect(t, layout.board.y + layout.board.height >= layout.new_button.y)
+	up_layout := g.game_layout(&game, 975, 2110)
+	testing.expect(t, up_layout.board.x + up_layout.board.width >= 975)
+	testing.expectf(t, abs(down_layout.board.y - up_layout.board.y) > 1, "2x board has no vertical pan range")
 }
 
 @(test)

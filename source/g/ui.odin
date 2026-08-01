@@ -63,16 +63,23 @@ game_layout :: proc(game: ^Game, width, height: f32) -> Layout {
 	base := layout.board
 	size := base.width * zoom
 	origin_x := base.x + (base.width - size) / 2
-	origin_y := base.y + (base.height - size) / 2
+	play_top := layout.panel.y + layout.panel.height
+	play_bottom := layout.new_button.y
+	centered_y := base.y + (base.height - size) / 2
+	top_anchor := min(1.0, zoom - 1)
+	grid_padding := size * 0.065
+	zoomed_top := play_top - grid_padding
+	origin_y := centered_y + (zoomed_top - centered_y) * top_anchor
 	pan_x, pan_y: f32
 	if size > width {
 		pan_x = max(width - origin_x - size, min(-origin_x, game.board_pan[0]))
 	}
-	play_top := layout.panel.y + layout.panel.height
-	play_bottom := layout.new_button.y
-	play_height := play_bottom - play_top
-	if size > play_height {
-		pan_y = max(play_bottom - origin_y - size, min(play_top - origin_y, game.board_pan[1]))
+	if zoom > 1 {
+		top_position := play_top - grid_padding
+		bottom_position := play_bottom - size + grid_padding
+		min_position := min(top_position, bottom_position)
+		max_position := max(top_position, bottom_position)
+		pan_y = max(min_position - origin_y, min(max_position - origin_y, game.board_pan[1]))
 	}
 	game.board_pan = {pan_x, pan_y}
 	layout.board = {
