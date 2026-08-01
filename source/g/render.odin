@@ -135,13 +135,21 @@ draw_confirmation :: proc(game: ^Game, layout: ^Layout) {
 }
 
 draw_completion :: proc(game: ^Game, layout: ^Layout) {
-	area := visible_play_area(layout)
+	screen_width := f32(rl.GetScreenWidth())
+	screen_height := f32(rl.GetScreenHeight())
 	colors := [3]rl.Color{{111, 139, 111, 230}, {151, 174, 148, 245}, {244, 247, 241, 250}}
-	base_radius := max(7.0, min(12.0, area.width * 0.012))
-	for i in 0..<30 {
-		phase := game.celebration_time * (0.25 + f32(i % 5) * 0.035) + f32(i) * 0.371
-		x := area.x + (0.04 + f32((i * 47) % 93) / 100.0) * area.width
-		y := area.y + f32(math.mod(f64(phase), 1.0)) * area.height
+	base_radius := max(7.0, min(12.0, screen_width * 0.012))
+	for i in 0..<42 {
+		start_x := f32((i * 67 + i * i * 13 + 17) % 997) / 997.0
+		start_y := f32((i * 173 + i * i * 29 + 41) % 991) / 991.0
+		speed := 0.17 + f32((i * 31) % 11) * 0.014
+		vertical := game.celebration_time * speed + start_y
+		cycle := f32(math.floor(f64(vertical)))
+		drift := (f32((i * 19) % 17) - 8) * 0.018
+		sway := f32(math.sin(f64(game.celebration_time * (0.65 + f32(i % 7) * 0.08) + f32(i)))) * 0.035
+		x_normalized := f32(math.mod(f64(start_x + cycle * drift + sway + 1), 1.0))
+		x := screen_width * (0.025 + x_normalized * 0.95)
+		y := screen_height * f32(math.mod(f64(vertical), 1.0))
 		radius := base_radius + f32(i % 3) * 2
 		rl.DrawCircleV({x, y}, radius, colors[i % len(colors)])
 		rl.DrawCircleV({x, y}, radius * 0.38, {244, 247, 241, 210})
