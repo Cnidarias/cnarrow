@@ -22,17 +22,18 @@ make_layout :: proc(width, height: f32) -> Layout {
 		layout.board = {margin, (height - board_size) / 2, board_size, board_size}
 		layout.panel = {layout.board.x + board_size + margin, margin, panel_width, height - margin * 2}
 	} else {
-		panel_height: f32 = 160
-		board_size := min(width - margin * 2, height - panel_height - margin * 3)
+		panel_height: f32 = 128
+		button_height: f32 = 104
 		layout.panel = {margin, margin, width - margin * 2, panel_height}
-		board_y := max(layout.panel.y + panel_height + margin, (height - board_size) / 2)
+		layout.new_button = {margin, height - margin - button_height, width - margin * 2, button_height}
+		play_top := layout.panel.y + panel_height + margin
+		play_bottom := layout.new_button.y - margin
+		board_size := min(width - margin * 2, play_bottom - play_top)
+		board_y := play_top + (play_bottom - play_top - board_size) / 2
 		layout.board = {(width - board_size) / 2, board_y, board_size, board_size}
 	}
 	p := layout.panel
 	if layout.compact {
-		button_h: f32 = min(132, p.height - 20)
-		button_w := min(p.width * 0.48, 420.0)
-		layout.new_button = {p.x + p.width - button_w, p.y + (p.height - button_h) / 2, button_w, button_h}
 		return layout
 	}
 	button_gap: f32 = 8
@@ -142,7 +143,7 @@ handle_input :: proc(game: ^Game) {
 		}
 	}
 	if point_in(point, layout.new_button) { request_new_puzzle(game); return }
-	if layout.compact && point.y < layout.panel.y + layout.panel.height do return
+	if layout.compact && (point.y < layout.panel.y + layout.panel.height || point.y > layout.new_button.y) do return
 	id := arrow_at_point(game, point, &layout)
 	if id >= 0 do start_arrow_animation(game, id)
 }

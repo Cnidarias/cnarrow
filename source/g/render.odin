@@ -90,12 +90,16 @@ draw_board :: proc(game: ^Game, layout: ^Layout) {
 draw_settings :: proc(game: ^Game, layout: ^Layout) {
 	p := layout.panel
 	title_size := int(max(27.0, min(42.0, p.width * 0.12)))
-	if layout.compact do title_size = int(max(27.0, min(32.0, p.width * 0.085)))
+	if layout.compact {
+		measured := max(1, rl.MeasureText("CNARROW", 10))
+		title_size = int(max(42.0, min(72.0, p.width * 0.44 * 10 / f32(measured))))
+	}
 	rl.DrawText("CNARROW", i32(p.x), i32(p.y + 4), i32(title_size), INK)
 	label_size := int(max(15.0, min(19.0, p.width * 0.055)))
 	if layout.compact {
+		label_size = int(max(20.0, min(30.0, f32(title_size) * 0.42)))
 		stats := fmt.ctprintf("%d left  |  %d blocked", game.board.arrow_count - game.removed_count, game.blocked_taps)
-		rl.DrawText(stats, i32(p.x), i32(p.y + 58), i32(label_size), SAGE_DARK)
+		rl.DrawText(stats, i32(p.x), i32(p.y + f32(title_size) + 14), i32(label_size), SAGE_DARK)
 		draw_button(layout.new_button, "New Puzzle")
 		return
 	}
@@ -149,7 +153,8 @@ game_draw :: proc(game: ^Game, dt: f32) {
 	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if layout.compact {
 		play_top := i32(layout.panel.y + layout.panel.height)
-		rl.BeginScissorMode(0, play_top, rl.GetScreenWidth(), rl.GetScreenHeight() - play_top)
+		play_bottom := i32(layout.new_button.y)
+		rl.BeginScissorMode(0, play_top, rl.GetScreenWidth(), play_bottom - play_top)
 	}
 	draw_board(game, &layout)
 	if layout.compact do rl.EndScissorMode()
