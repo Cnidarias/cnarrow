@@ -15,6 +15,8 @@ start_puzzle :: proc(game: ^Game) {
 	game.blocked_taps = 0
 	game.removed_count = 0
 	game.celebration_time = 0
+	game.auto_solving = false
+	game.auto_solution_step = 0
 }
 
 game_init :: proc(game: ^Game, seed: u64) {
@@ -37,10 +39,29 @@ request_new_puzzle :: proc(game: ^Game) {
 	}
 }
 
+toggle_auto_solve :: proc(game: ^Game) {
+	if game.phase != .Playing do return
+	game.auto_solving = !game.auto_solving
+	if game.auto_solving do game.auto_solution_step = 0
+}
+
+update_auto_solve :: proc(game: ^Game) {
+	if !game.auto_solving || game.phase != .Playing || has_active_animations(game) do return
+	for game.auto_solution_step < game.board.arrow_count {
+		id := game.board.solution[game.auto_solution_step]
+		game.auto_solution_step += 1
+		if game.board.arrows[id].removed do continue
+		if !start_arrow_animation(game, id) do game.auto_solving = false
+		return
+	}
+	game.auto_solving = false
+}
+
 game_update :: proc(game: ^Game, dt: f32) {
 	if game.phase == .Playing {
 		game.elapsed += dt
 		update_animations(game, dt)
+		update_auto_solve(game)
 	} else if game.phase == .Complete {
 		game.celebration_time += dt
 	}

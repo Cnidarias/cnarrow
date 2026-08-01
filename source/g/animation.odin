@@ -58,6 +58,11 @@ active_animation_for_arrow :: proc(game: ^Game, arrow_id: int) -> ^Arrow_Animati
 	return nil
 }
 
+has_active_animations :: proc(game: ^Game) -> bool {
+	for animation in game.animations do if animation.kind != .None do return true
+	return false
+}
+
 update_animations :: proc(game: ^Game, dt: f32) {
 	active := false
 	for i in 0..<len(game.animations) {

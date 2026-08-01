@@ -63,6 +63,8 @@ Game :: struct {
 	board_pan:          [2]f32,
 	input_suppressed:   bool,
 	touch_down:         bool,
+	auto_solving:       bool,
+	auto_solution_step: int,
 }
 
 game: Game

@@ -104,6 +104,7 @@ draw_settings :: proc(game: ^Game, layout: ^Layout) {
 		stats := fmt.ctprintf("%d left  |  %d blocked", game.board.arrow_count - game.removed_count, game.blocked_taps)
 		rl.DrawText(stats, i32(p.x), i32(p.y + f32(title_size) + 14), i32(label_size), SAGE_DARK)
 		draw_button(layout.new_button, "New Puzzle")
+		draw_button(layout.auto_button, "Auto Solve", game.auto_solving)
 		return
 	}
 	rl.DrawText("NEXT GRID", i32(p.x), i32(layout.size_buttons[0].y - 25), i32(label_size), SAGE_DARK)
@@ -115,6 +116,7 @@ draw_settings :: proc(game: ^Game, layout: ^Layout) {
 		draw_button(layout.diff_buttons[i], diff_labels[i], int(game.selected_difficulty) == i)
 	}
 	draw_button(layout.new_button, "New Puzzle")
+	draw_button(layout.auto_button, "Auto Solve", game.auto_solving)
 	stats := fmt.ctprintf("%d left   |   %d blocked", game.board.arrow_count - game.removed_count, game.blocked_taps)
 	rl.DrawText(stats, i32(p.x), i32(layout.new_button.y - 28), i32(label_size), SAGE_DARK)
 }

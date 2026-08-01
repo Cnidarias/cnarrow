@@ -6,6 +6,7 @@ Layout :: struct {
 	board:       rl.Rectangle,
 	panel:       rl.Rectangle,
 	new_button:  rl.Rectangle,
+	auto_button: rl.Rectangle,
 	size_buttons:[3]rl.Rectangle,
 	diff_buttons:[3]rl.Rectangle,
 	compact:     bool,
@@ -25,7 +26,10 @@ make_layout :: proc(width, height: f32) -> Layout {
 		panel_height: f32 = 128
 		button_height: f32 = 104
 		layout.panel = {margin, margin, width - margin * 2, panel_height}
-		layout.new_button = {margin, height - margin - button_height, width - margin * 2, button_height}
+		button_gap: f32 = 12
+		button_width := (width - margin * 2 - button_gap) / 2
+		layout.new_button = {margin, height - margin - button_height, button_width, button_height}
+		layout.auto_button = {margin + button_width + button_gap, layout.new_button.y, button_width, button_height}
 		play_top := layout.panel.y + panel_height + margin
 		play_bottom := layout.new_button.y - margin
 		board_size := min(width - margin * 2, play_bottom - play_top)
@@ -45,7 +49,10 @@ make_layout :: proc(width, height: f32) -> Layout {
 		layout.size_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row1, row_w, button_h}
 		layout.diff_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row2, row_w, button_h}
 	}
-	layout.new_button = {p.x, min(p.y + p.height - button_h, row2 + button_h + 48), p.width, button_h}
+	command_y := min(p.y + p.height - button_h, row2 + button_h + 48)
+	command_width := (p.width - button_gap) / 2
+	layout.new_button = {p.x, command_y, command_width, button_h}
+	layout.auto_button = {p.x + command_width + button_gap, command_y, command_width, button_h}
 	return layout
 }
 
@@ -172,7 +179,12 @@ handle_point_input :: proc(game: ^Game, point: rl.Vector2) {
 			if point_in(point, layout.diff_buttons[i]) { game.selected_difficulty = Difficulty(i); return }
 		}
 	}
-	if point_in(point, layout.new_button) { request_new_puzzle(game); return }
+	if point_in(point, layout.new_button) {
+		game.auto_solving = false
+		request_new_puzzle(game)
+		return
+	}
+	if point_in(point, layout.auto_button) { toggle_auto_solve(game); return }
 	if layout.compact && (point.y < layout.panel.y + layout.panel.height || point.y > layout.new_button.y) do return
 	id := arrow_at_point(game, point, &layout)
 	if id >= 0 do start_arrow_animation(game, id)

@@ -98,6 +98,9 @@ test_portrait_layout_hides_settings_and_keeps_touch_targets :: proc(t: ^testing.
 	testing.expect_value(t, layout.size_buttons, [3]rl.Rectangle{})
 	testing.expect_value(t, layout.diff_buttons, [3]rl.Rectangle{})
 	testing.expectf(t, layout.new_button.height >= 96, "compact New Puzzle target is only %.1f pixels high", layout.new_button.height)
+	testing.expectf(t, layout.auto_button.height >= 96, "compact Auto Solve target is only %.1f pixels high", layout.auto_button.height)
+	testing.expect_value(t, layout.new_button.y, layout.auto_button.y)
+	testing.expect(t, layout.new_button.x + layout.new_button.width < layout.auto_button.x)
 	panel := g.confirmation_panel(&layout)
 	cancel, confirm := g.confirmation_buttons(&layout, panel)
 	testing.expect(t, cancel.height >= 96 && confirm.height >= 96)
@@ -203,6 +206,34 @@ test_animation_endpoints_and_game_states :: proc(t: ^testing.T) {
 	testing.expect_value(t, game.phase, g.Game_Phase.Complete)
 	g.request_new_puzzle(&game)
 	testing.expect_value(t, game.phase, g.Game_Phase.Playing)
+}
+
+@(test)
+test_auto_solve_waits_for_each_arrow_animation :: proc(t: ^testing.T) {
+	game := g.Game{phase = .Playing}
+	game.board = g.Board{side = 6, arrow_count = 2}
+	game.board.arrows[0] = {id = 0, tail = {0, 2}, length = 2, dir = .Right}
+	game.board.arrows[1] = {id = 1, tail = {3, 0}, length = 3, dir = .Down}
+	game.board.solution[0] = 1
+	game.board.solution[1] = 0
+	testing.expect(t, g.rebuild_occupancy(&game.board))
+
+	g.toggle_auto_solve(&game)
+	g.update_auto_solve(&game)
+	testing.expect(t, game.auto_solving)
+	testing.expect_value(t, game.removed_count, 1)
+	testing.expect(t, game.board.arrows[1].removed)
+	testing.expect(t, !game.board.arrows[0].removed)
+
+	g.update_auto_solve(&game)
+	testing.expect_value(t, game.removed_count, 1)
+	g.update_animations(&game, 3)
+	g.update_auto_solve(&game)
+	testing.expect_value(t, game.removed_count, 2)
+	testing.expect(t, game.board.arrows[0].removed)
+
+	g.update_animations(&game, 3)
+	testing.expect_value(t, game.phase, g.Game_Phase.Complete)
 }
 
 @(test)
