@@ -62,6 +62,21 @@ test_portrait_arrow_hit_area_accepts_coarse_taps :: proc(t: ^testing.T) {
 	stroke := g.grid_to_screen(&game.board, &layout, {2, 2})
 	coarse_tap := rl.Vector2{stroke.x, stroke.y + 20}
 	testing.expect_value(t, g.arrow_at_point(&game, coarse_tap, &layout), 0)
+	head := g.grid_to_screen(&game.board, &layout, {4, 2})
+	head_tap := rl.Vector2{head.x, head.y + 45}
+	testing.expect_value(t, g.arrow_at_point(&game, head_tap, &layout), 0)
+}
+
+@(test)
+test_zoomed_board_pans_through_the_full_play_area :: proc(t: ^testing.T) {
+	game := g.Game{board_zoom = 2, board_pan = {10000, 10000}}
+	layout := g.game_layout(&game, 975, 2110)
+	testing.expect(t, layout.board.x <= 0)
+	testing.expect(t, layout.board.y <= layout.panel.y + layout.panel.height)
+	game.board_pan = {-10000, -10000}
+	layout = g.game_layout(&game, 975, 2110)
+	testing.expect(t, layout.board.x + layout.board.width >= 975)
+	testing.expect(t, layout.board.y + layout.board.height >= layout.new_button.y)
 }
 
 @(test)

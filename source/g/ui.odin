@@ -55,12 +55,22 @@ game_layout :: proc(game: ^Game, width, height: f32) -> Layout {
 	zoom := max(1.0, min(3.0, game.board_zoom))
 	base := layout.board
 	size := base.width * zoom
-	max_pan := (size - base.width) / 2
-	pan_x := max(-max_pan, min(max_pan, game.board_pan[0]))
-	pan_y := max(-max_pan, min(max_pan, game.board_pan[1]))
+	origin_x := base.x + (base.width - size) / 2
+	origin_y := base.y + (base.height - size) / 2
+	pan_x, pan_y: f32
+	if size > width {
+		pan_x = max(width - origin_x - size, min(-origin_x, game.board_pan[0]))
+	}
+	play_top := layout.panel.y + layout.panel.height
+	play_bottom := layout.new_button.y
+	play_height := play_bottom - play_top
+	if size > play_height {
+		pan_y = max(play_bottom - origin_y - size, min(play_top - origin_y, game.board_pan[1]))
+	}
+	game.board_pan = {pan_x, pan_y}
 	layout.board = {
-		base.x + (base.width - size) / 2 + pan_x,
-		base.y + (base.height - size) / 2 + pan_y,
+		origin_x + pan_x,
+		origin_y + pan_y,
 		size,
 		size,
 	}
@@ -92,6 +102,22 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 	pad := layout.board.width * 0.065
 	span := layout.board.width - pad * 2
 	spacing := span / f32(board.side - 1)
+	if layout.compact {
+		head_radius := min(56.0, max(40.0, spacing * 1.4))
+		best_head_distance := head_radius * head_radius
+		best_head := -1
+		for i in 0..<board.arrow_count {
+			a := &board.arrows[i]
+			if a.removed do continue
+			head := grid_to_screen(board, layout, arrow_head(board, a))
+			dx, dy := point.x - head.x, point.y - head.y
+			distance := dx * dx + dy * dy
+			if distance <= best_head_distance {
+				best_head_distance, best_head = distance, i
+			}
+		}
+		if best_head >= 0 do return best_head
+	}
 	// The whole stroke is interactive. Resolve forgiving target overlaps by
 	// choosing the nearest path.
 	hit_radius := min(14.0, max(7.0, spacing * 0.46))
@@ -120,10 +146,7 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 	return best_arrow
 }
 
-handle_input :: proc(game: ^Game) {
-	if game.input_suppressed do return
-	point, pressed := pointer_pressed(game)
-	if !pressed do return
+handle_point_input :: proc(game: ^Game, point: rl.Vector2) {
 	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if game.phase == .Confirm_New {
 		panel := confirmation_panel(&layout)
@@ -146,6 +169,12 @@ handle_input :: proc(game: ^Game) {
 	if layout.compact && (point.y < layout.panel.y + layout.panel.height || point.y > layout.new_button.y) do return
 	id := arrow_at_point(game, point, &layout)
 	if id >= 0 do start_arrow_animation(game, id)
+}
+
+handle_input :: proc(game: ^Game) {
+	if game.input_suppressed do return
+	point, pressed := pointer_pressed(game)
+	if pressed do handle_point_input(game, point)
 }
 
 confirmation_panel :: proc(layout: ^Layout) -> rl.Rectangle {

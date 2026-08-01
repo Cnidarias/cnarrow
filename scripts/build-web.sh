@@ -36,7 +36,7 @@ emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/emscripten-allocator.o
   -sENVIRONMENT=web \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createCnarrowModule \
-  -sEXPORTED_FUNCTIONS='["_cnarrow_start","_cnarrow_frame","_cnarrow_resize","_cnarrow_set_board_view","_cnarrow_set_input_suppressed","_cnarrow_shutdown"]' \
+  -sEXPORTED_FUNCTIONS='["_cnarrow_start","_cnarrow_frame","_cnarrow_resize","_cnarrow_set_board_view","_cnarrow_board_pan_x","_cnarrow_board_pan_y","_cnarrow_set_input_suppressed","_cnarrow_tap","_cnarrow_shutdown"]' \
   -sNO_EXIT_RUNTIME=1 \
   -sASSERTIONS=1
 

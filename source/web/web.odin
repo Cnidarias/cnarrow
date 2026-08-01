@@ -46,13 +46,32 @@ cnarrow_resize :: proc "c" (width, height: i32) {
 @(export)
 cnarrow_set_board_view :: proc "c" (zoom, pan_x, pan_y: f32) {
 	context = web_context
-	if web_started do g.set_board_view(&web_game, zoom, pan_x, pan_y)
+	if web_started {
+		g.set_board_view(&web_game, zoom, pan_x, pan_y)
+		_ = g.game_layout(&web_game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
+	}
+}
+
+@(export)
+cnarrow_board_pan_x :: proc "c" () -> f32 {
+	return web_game.board_pan[0]
+}
+
+@(export)
+cnarrow_board_pan_y :: proc "c" () -> f32 {
+	return web_game.board_pan[1]
 }
 
 @(export)
 cnarrow_set_input_suppressed :: proc "c" (suppressed: i32) {
 	context = web_context
 	if web_started do web_game.input_suppressed = suppressed != 0
+}
+
+@(export)
+cnarrow_tap :: proc "c" (x, y: f32) {
+	context = web_context
+	if web_started do g.handle_point_input(&web_game, {x, y})
 }
 
 @(export)

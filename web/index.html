@@ -63,45 +63,95 @@
     let boardPanX = 0;
     let boardPanY = 0;
     let pinch = null;
+    let drag = null;
+
+    function canvasPoint(touch) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (touch.clientX - rect.left) * canvas.width / rect.width,
+        y: (touch.clientY - rect.top) * canvas.height / rect.height,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      };
+    }
 
     function touchPair(event) {
       if (event.touches.length < 2) return null;
-      const a = event.touches[0];
-      const b = event.touches[1];
-      const scale = Math.min(window.devicePixelRatio || 1, 2.5);
+      const a = canvasPoint(event.touches[0]);
+      const b = canvasPoint(event.touches[1]);
       return {
-        x: ((a.clientX + b.clientX) / 2 - canvas.getBoundingClientRect().left) * scale,
-        y: ((a.clientY + b.clientY) / 2 - canvas.getBoundingClientRect().top) * scale,
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
         distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
       };
     }
 
+    function setBoardView() {
+      game._cnarrow_set_board_view(boardZoom, boardPanX, boardPanY);
+      boardPanX = game._cnarrow_board_pan_x();
+      boardPanY = game._cnarrow_board_pan_y();
+    }
+
     canvas.addEventListener('touchstart', event => {
-      const pair = touchPair(event);
-      if (!pair || !started) return;
+      if (!started) return;
       event.preventDefault();
-      pinch = { ...pair, zoom: boardZoom, panX: boardPanX, panY: boardPanY };
       game._cnarrow_set_input_suppressed(1);
+      const pair = touchPair(event);
+      if (pair) {
+        pinch = { ...pair, zoom: boardZoom, panX: boardPanX, panY: boardPanY };
+        drag = null;
+        return;
+      }
+      const point = canvasPoint(event.touches[0]);
+      drag = { ...point, panX: boardPanX, panY: boardPanY, moved: false };
     }, { passive: false });
 
     canvas.addEventListener('touchmove', event => {
-      const pair = touchPair(event);
-      if (!pair || !pinch || !started) return;
+      if (!started) return;
       event.preventDefault();
-      boardZoom = Math.max(1, Math.min(3, pinch.zoom * pair.distance / Math.max(1, pinch.distance)));
-      boardPanX = pinch.panX + pair.x - pinch.x;
-      boardPanY = pinch.panY + pair.y - pinch.y;
-      game._cnarrow_set_board_view(boardZoom, boardPanX, boardPanY);
+      const pair = touchPair(event);
+      if (pair && pinch) {
+        boardZoom = Math.max(1, Math.min(3, pinch.zoom * pair.distance / Math.max(1, pinch.distance)));
+        boardPanX = pinch.panX + pair.x - pinch.x;
+        boardPanY = pinch.panY + pair.y - pinch.y;
+        setBoardView();
+        return;
+      }
+      if (event.touches.length !== 1 || !drag) return;
+      const point = canvasPoint(event.touches[0]);
+      if (Math.hypot(point.clientX - drag.clientX, point.clientY - drag.clientY) > 8) drag.moved = true;
+      if (!drag.moved || boardZoom <= 1) return;
+      boardPanX = drag.panX + point.x - drag.x;
+      boardPanY = drag.panY + point.y - drag.y;
+      setBoardView();
     }, { passive: false });
 
-    function finishPinch(event) {
-      if (!pinch || event.touches.length > 0 || !started) return;
-      pinch = null;
+    function finishTouch(event) {
+      if (!started) return;
+      event.preventDefault();
+      if (event.touches.length >= 2) return;
+      if (pinch) {
+        pinch = null;
+        if (event.touches.length === 1) {
+          const point = canvasPoint(event.touches[0]);
+          drag = { ...point, panX: boardPanX, panY: boardPanY, moved: true };
+          return;
+        }
+        drag = null;
+        game._cnarrow_set_input_suppressed(0);
+        return;
+      }
+      if (event.touches.length > 0) return;
+      if (drag && !drag.moved && event.changedTouches.length > 0) {
+        const point = canvasPoint(event.changedTouches[0]);
+        game._cnarrow_tap(point.x, point.y);
+      }
+      drag = null;
       game._cnarrow_set_input_suppressed(0);
     }
 
-    canvas.addEventListener('touchend', finishPinch, { passive: false });
-    canvas.addEventListener('touchcancel', finishPinch, { passive: false });
+    canvas.addEventListener('touchend', finishTouch, { passive: false });
+    canvas.addEventListener('touchcancel', finishTouch, { passive: false });
 
     function canvasPixels() {
       const rect = wrap.getBoundingClientRect();
