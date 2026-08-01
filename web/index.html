@@ -43,11 +43,21 @@
     #status.ready { opacity: 0; pointer-events: none; }
     #status.error { color: #562e2e; }
     #status small { max-width: 34rem; color: #6e836f; }
+    #build-version {
+      position: fixed;
+      right: max(6px, env(safe-area-inset-right));
+      bottom: max(3px, env(safe-area-inset-bottom));
+      z-index: 2;
+      color: #6e836f;
+      font: 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
   <main id="game-wrap"><canvas id="canvas" tabindex="0" aria-label="Cnarrow puzzle game"></canvas></main>
   <div id="status" role="status"><strong>Loading Cnarrow…</strong><small>Preparing the puzzle board</small></div>
+  <output id="build-version" aria-label="Build commit">__BUILD_COMMIT__</output>
   <script src="odin.js"></script>
   <script src="cnarrow.js"></script>
   <script>

@@ -4,6 +4,16 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 odin_root="$(odin root)"
 raylib_web="$odin_root/vendor/raylib/wasm/libraylib.web.a"
+build_commit="${BUILD_COMMIT:-}"
+
+if [[ -z "$build_commit" ]] && command -v git >/dev/null 2>&1; then
+  build_commit="$(git -C "$project_dir" rev-parse --short HEAD 2>/dev/null || true)"
+fi
+if [[ ! "$build_commit" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
+  build_commit="local"
+else
+  build_commit="${build_commit:0:7}"
+fi
 
 if ! command -v emcc >/dev/null 2>&1; then
   echo "error: emcc was not found; activate the Emscripten SDK first" >&2
@@ -40,6 +50,6 @@ emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/emscripten-allocator.o
   -sNO_EXIT_RUNTIME=1 \
   -sASSERTIONS=1
 
-cp "$project_dir/web/index.html" "$project_dir/build/index.html"
+sed "s/__BUILD_COMMIT__/$build_commit/g" "$project_dir/web/index.html" > "$project_dir/build/index.html"
 cp "$odin_root/core/sys/wasm/js/odin.js" "$project_dir/build/odin.js"
-echo "Built browser game in $project_dir/build"
+echo "Built browser game $build_commit in $project_dir/build"

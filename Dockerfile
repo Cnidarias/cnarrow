@@ -23,6 +23,9 @@ ENV PATH="/opt/odin:${PATH}"
 
 FROM toolchain AS builder
 
+ARG BUILD_COMMIT=local
+ENV BUILD_COMMIT=${BUILD_COMMIT}
+
 WORKDIR /src
 
 COPY source/ source/

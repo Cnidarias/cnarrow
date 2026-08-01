@@ -2,6 +2,8 @@ services:
   cnarrow-web:
     build:
       context: .
+      args:
+        BUILD_COMMIT: ${BUILD_COMMIT:-local}
     image: cnarrow-web:local
     ports:
       - "8080:8080"
