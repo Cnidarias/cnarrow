@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Cnarrow">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest?v=__BUILD_COMMIT__">
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png?v=__BUILD_COMMIT__">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=__BUILD_COMMIT__">
   <title>Cnarrow</title>
   <style>
     :root { color-scheme: light; background: #d3e0cd; }
@@ -66,8 +66,8 @@
   <main id="game-wrap"><canvas id="canvas" tabindex="0" aria-label="Cnarrow puzzle game"></canvas></main>
   <div id="status" role="status"><strong>Loading Cnarrow…</strong><small>Preparing the puzzle board</small></div>
   <output id="build-version" aria-label="Build commit">__BUILD_COMMIT__</output>
-  <script src="odin.js"></script>
-  <script src="cnarrow.js"></script>
+  <script src="odin.js?v=__BUILD_COMMIT__"></script>
+  <script src="cnarrow.js?v=__BUILD_COMMIT__"></script>
   <script>
     const canvas = document.getElementById('canvas');
     const wrap = document.getElementById('game-wrap');
@@ -210,7 +210,7 @@
         const odinImports = odin.setupDefaultImports(wasmMemory, null, imports.env?.memory);
         imports.odin_env = odinImports.odin_env;
         imports.env = { ...odinImports.env, ...imports.env };
-        return WebAssembly.instantiateStreaming(fetch('cnarrow.wasm'), imports).then(result => {
+        return WebAssembly.instantiateStreaming(fetch('cnarrow.wasm?v=__BUILD_COMMIT__'), imports).then(result => {
           const instance = result.instance || result;
           if (instance.exports.memory) wasmMemory.setMemory(instance.exports.memory);
           wasmMemory.setExports(instance.exports);
@@ -241,7 +241,7 @@
 
     if ('serviceWorker' in navigator) {
       addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' })
+        navigator.serviceWorker.register('service-worker.js?v=__BUILD_COMMIT__', { updateViaCache: 'none' })
           .then(registration => registration.update())
           .catch(error => console.warn('Offline support could not start.', error));
       }, { once: true });

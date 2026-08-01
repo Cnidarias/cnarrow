@@ -23,11 +23,11 @@ for file in "${required_files[@]}"; do
   fi
 done
 
-grep -Fq '<link rel="manifest" href="manifest.webmanifest">' "$site_dir/index.html"
-grep -Fq "navigator.serviceWorker.register('service-worker.js'" "$site_dir/index.html"
+grep -Fq '<link rel="manifest" href="manifest.webmanifest?v=' "$site_dir/index.html"
+grep -Fq "navigator.serviceWorker.register('service-worker.js?v=" "$site_dir/index.html"
 grep -Fq '"display": "standalone"' "$site_dir/manifest.webmanifest"
 grep -Fq '"purpose": "maskable"' "$site_dir/manifest.webmanifest"
-grep -Fq "'./cnarrow.wasm'" "$site_dir/service-worker.js"
+grep -Fq "'./cnarrow.wasm?v=" "$site_dir/service-worker.js"
 
 if grep -R -Fq '__BUILD_COMMIT__' "$site_dir/index.html" "$site_dir/service-worker.js"; then
   echo "error: build commit placeholder was not replaced" >&2
