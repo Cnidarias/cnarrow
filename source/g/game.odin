@@ -60,7 +60,9 @@ update_auto_solve :: proc(game: ^Game) {
 game_update :: proc(game: ^Game, dt: f32) {
 	if game.phase == .Playing {
 		game.elapsed += dt
-		update_animations(game, dt)
+		animation_dt := dt
+		if game.auto_solving do animation_dt *= 2
+		update_animations(game, animation_dt)
 		update_auto_solve(game)
 	} else if game.phase == .Complete {
 		game.celebration_time += dt
