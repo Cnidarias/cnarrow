@@ -1,9 +1,9 @@
 package g
 
-MAX_SIDE   :: 40
+MAX_SIDE   :: 60
 MAX_CELLS  :: MAX_SIDE * MAX_SIDE
 MAX_ARROWS :: MAX_CELLS / 2
-MAX_ARROW_LENGTH :: 128
+MAX_ARROW_LENGTH :: 256
 MAX_ACTIVE_ANIMATIONS :: 32
 
 Grid_Pos :: struct { x, y: int }
@@ -11,7 +11,7 @@ Path_Pos :: struct { x, y: u8 }
 
 Direction :: enum { Up, Right, Down, Left }
 Difficulty :: enum { Easy, Medium, Hard }
-Grid_Size :: enum { Small, Medium, Large }
+Grid_Size :: enum { Size_24, Size_32, Size_40, Size_60 }
 Game_Phase :: enum { Playing, Confirm_New, Complete }
 Animation_Kind :: enum { None, Escaping, Blocked }
 
@@ -65,15 +65,17 @@ Game :: struct {
 	touch_down:         bool,
 	auto_solving:       bool,
 	auto_solution_step: int,
+	settings_open:      bool,
 }
 
 game: Game
 
 grid_side :: proc(size: Grid_Size) -> int {
 	switch size {
-	case .Small:  return 24
-	case .Medium: return 32
-	case .Large:  return 40
+	case .Size_24:  return 24
+	case .Size_32:  return 32
+	case .Size_40:  return 40
+	case .Size_60:  return 60
 	}
 	return 8
 }

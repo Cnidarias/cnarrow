@@ -10,7 +10,16 @@ if [[ -z "$build_commit" ]] && command -v git >/dev/null 2>&1; then
   build_commit="$(git -C "$project_dir" rev-parse --short HEAD 2>/dev/null || true)"
 fi
 if [[ ! "$build_commit" =~ ^[0-9a-fA-F]{7,40}$ ]]; then
-  build_commit="local"
+  # Docker builds do not include .git and traditionally all used "local",
+  # causing installed PWAs to retain an older WASM bundle. Derive a stable
+  # version from the actual build inputs so any source change rotates caches.
+  build_commit="$(
+    find "$project_dir/source" "$project_dir/web" -type f -print0 \
+      | sort -z \
+      | xargs -0 sha256sum \
+      | sha256sum \
+      | cut -c1-12
+  )"
 else
   build_commit="${build_commit:0:7}"
 fi
@@ -42,7 +51,7 @@ emcc "$project_dir/build/cnarrow.obj" "$project_dir/build/emscripten-allocator.o
   --js-library "$project_dir/web/odin-emscripten-library.js" \
   -sUSE_GLFW=3 \
   -sINITIAL_MEMORY=67108864 \
-  -sSTACK_SIZE=2097152 \
+  -sSTACK_SIZE=8388608 \
   -sENVIRONMENT=web \
   -sMODULARIZE=1 \
   -sEXPORT_NAME=createCnarrowModule \

@@ -26,6 +26,19 @@ draw_button :: proc(rect: rl.Rectangle, label: cstring, selected := false) {
 	draw_text_centered(label, rect, font_size, text_color)
 }
 
+draw_cog :: proc(rect: rl.Rectangle) {
+	center := rl.Vector2{rect.x + rect.width / 2, rect.y + rect.height / 2}
+	radius := rect.height * 0.18
+	directions := [8]rl.Vector2{{1, 0}, {0.707, 0.707}, {0, 1}, {-0.707, 0.707}, {-1, 0}, {-0.707, -0.707}, {0, -1}, {0.707, -0.707}}
+	for direction in directions {
+		from := rl.Vector2{center.x + direction.x * radius, center.y + direction.y * radius}
+		to := rl.Vector2{center.x + direction.x * radius * 1.65, center.y + direction.y * radius * 1.65}
+		rl.DrawLineEx(from, to, max(3, rect.height * 0.09), INK)
+	}
+	rl.DrawCircleV(center, radius * 1.12, INK)
+	rl.DrawCircleV(center, radius * 0.45, SAGE)
+}
+
 grid_to_screen :: proc(board: ^Board, layout: ^Layout, p: Grid_Pos, offset: f32 = 0, dir: Direction = .Right) -> rl.Vector2 {
 	step := direction_step(dir)
 	return grid_coordinates_to_screen(board, layout, f32(p.x) + f32(step.x) * offset, f32(p.y) + f32(step.y) * offset)
@@ -105,20 +118,36 @@ draw_settings :: proc(game: ^Game, layout: ^Layout) {
 		rl.DrawText(stats, i32(p.x), i32(p.y + f32(title_size) + 14), i32(label_size), SAGE_DARK)
 		draw_button(layout.new_button, "New Puzzle")
 		draw_button(layout.auto_button, "Auto Solve", game.auto_solving)
+		draw_cog(layout.settings_button)
 		return
 	}
 	rl.DrawText("NEXT GRID", i32(p.x), i32(layout.size_buttons[0].y - 25), i32(label_size), SAGE_DARK)
 	rl.DrawText("DIFFICULTY", i32(p.x), i32(layout.diff_buttons[0].y - 25), i32(label_size), SAGE_DARK)
-	size_labels := [3]cstring{"24 x 24", "32 x 32", "40 x 40"}
-	diff_labels := [3]cstring{"Easy", "Medium", "Hard"}
-	for i in 0..<3 {
+	size_labels := [4]cstring{"24 x 24", "32 x 32", "40 x 40", "60 x 60"}
+	// The generator's old Easy profile creates the most arrows, so expose it as Hard.
+	diff_labels := [3]cstring{"Hard", "Medium", "Easy"}
+	for i in 0..<4 {
 		draw_button(layout.size_buttons[i], size_labels[i], int(game.selected_size) == i)
+	}
+	for i in 0..<3 {
 		draw_button(layout.diff_buttons[i], diff_labels[i], int(game.selected_difficulty) == i)
 	}
 	draw_button(layout.new_button, "New Puzzle")
 	draw_button(layout.auto_button, "Auto Solve", game.auto_solving)
 	stats := fmt.ctprintf("%d left   |   %d blocked", game.board.arrow_count - game.removed_count, game.blocked_taps)
 	rl.DrawText(stats, i32(p.x), i32(layout.new_button.y - 28), i32(label_size), SAGE_DARK)
+}
+
+draw_mobile_settings :: proc(game: ^Game, layout: ^Layout) {
+	rl.DrawRectangle(0, 0, rl.GetScreenWidth(), rl.GetScreenHeight(), {29, 35, 31, 90})
+	rl.DrawRectangleRounded(layout.settings_panel, 0.07, 10, SOFT_WHITE)
+	rl.DrawText("NEXT GRID", i32(layout.settings_panel.x + 14), i32(layout.settings_panel.y + 18), 24, SAGE_DARK)
+	size_labels := [4]cstring{"24", "32", "40", "60"}
+	for i in 0..<4 do draw_button(layout.size_buttons[i], size_labels[i], int(game.selected_size) == i)
+	rl.DrawText("DIFFICULTY", i32(layout.settings_panel.x + 14), i32(layout.diff_buttons[0].y - 28), 22, SAGE_DARK)
+	diff_labels := [3]cstring{"Hard", "Medium", "Easy"}
+	for i in 0..<3 do draw_button(layout.diff_buttons[i], diff_labels[i], int(game.selected_difficulty) == i)
+	draw_button(layout.settings_close, "Done", true)
 }
 
 draw_confirmation :: proc(game: ^Game, layout: ^Layout) {
@@ -163,7 +192,13 @@ draw_completion :: proc(game: ^Game, layout: ^Layout) {
 	seconds := int(game.elapsed) % 60
 	stats := fmt.ctprintf("%02d:%02d   |   %d blocked taps", minutes, seconds, game.blocked_taps)
 	draw_text_centered(stats, {panel.x, panel.y + 38 + f32(title_size), panel.width, f32(stats_size + 8)}, stats_size, SAGE_DARK)
-	draw_button(completion_button(layout), "Next Puzzle", true)
+	if game.auto_solving {
+		remaining := max(1, 5 - int(game.celebration_time))
+		next_label := fmt.ctprintf("Next puzzle in %d", remaining)
+		draw_button(completion_button(layout), next_label, true)
+	} else {
+		draw_button(completion_button(layout), "Next Puzzle", true)
+	}
 }
 
 game_draw :: proc(game: ^Game, dt: f32) {
@@ -175,6 +210,7 @@ game_draw :: proc(game: ^Game, dt: f32) {
 	draw_board(game, &layout)
 	if layout.compact do rl.EndScissorMode()
 	draw_settings(game, &layout)
+	if layout.compact && game.settings_open do draw_mobile_settings(game, &layout)
 	if game.phase == .Confirm_New do draw_confirmation(game, &layout)
 	if game.phase == .Complete do draw_completion(game, &layout)
 }

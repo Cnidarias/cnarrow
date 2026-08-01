@@ -3,6 +3,7 @@ package g
 import rl "vendor:raylib"
 
 start_puzzle :: proc(game: ^Game) {
+	continue_auto := game.auto_solving
 	seed_rng := Rng{state = game.seed_counter}
 	game.seed_counter = rng_next(&seed_rng)
 	game.applied_size = game.selected_size
@@ -15,13 +16,14 @@ start_puzzle :: proc(game: ^Game) {
 	game.blocked_taps = 0
 	game.removed_count = 0
 	game.celebration_time = 0
-	game.auto_solving = false
+	game.auto_solving = continue_auto
 	game.auto_solution_step = 0
+	game.settings_open = false
 }
 
 game_init :: proc(game: ^Game, seed: u64) {
 	game^ = {
-		selected_size = .Medium,
+		selected_size = .Size_40,
 		selected_difficulty = .Medium,
 		seed_counter = seed,
 		board_zoom = 1,
@@ -54,7 +56,6 @@ update_auto_solve :: proc(game: ^Game) {
 		if !start_arrow_animation(game, id) do game.auto_solving = false
 		return
 	}
-	game.auto_solving = false
 }
 
 game_update :: proc(game: ^Game, dt: f32) {
@@ -66,6 +67,7 @@ game_update :: proc(game: ^Game, dt: f32) {
 		update_auto_solve(game)
 	} else if game.phase == .Complete {
 		game.celebration_time += dt
+		if game.auto_solving && game.celebration_time >= 5 do start_puzzle(game)
 	}
 	handle_input(game)
 }

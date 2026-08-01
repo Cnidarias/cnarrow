@@ -7,7 +7,10 @@ Layout :: struct {
 	panel:       rl.Rectangle,
 	new_button:  rl.Rectangle,
 	auto_button: rl.Rectangle,
-	size_buttons:[3]rl.Rectangle,
+	settings_button: rl.Rectangle,
+	settings_panel: rl.Rectangle,
+	settings_close: rl.Rectangle,
+	size_buttons:[4]rl.Rectangle,
 	diff_buttons:[3]rl.Rectangle,
 	compact:     bool,
 }
@@ -38,17 +41,33 @@ make_layout :: proc(width, height: f32) -> Layout {
 	}
 	p := layout.panel
 	if layout.compact {
+		cog_size: f32 = 64
+		layout.settings_button = {p.x + p.width - cog_size, p.y + 2, cog_size, cog_size}
+		overlay_margin: f32 = 14
+		layout.settings_panel = {p.x, p.y + p.height + overlay_margin, p.width, min(430, height - p.height - 104 - margin * 3)}
+		gap: f32 = 8
+		button_h: f32 = 46
+		cell_w := (layout.settings_panel.width - gap * 3 - 28) / 4
+		for i in 0..<4 {
+			row, col := i / 4, i % 4
+			layout.size_buttons[i] = {layout.settings_panel.x + 14 + f32(col) * (cell_w + gap), layout.settings_panel.y + 58 + f32(row) * (button_h + gap), cell_w, button_h}
+		}
+		diff_y := layout.settings_panel.y + 58 + 2 * (button_h + gap) + 30
+		diff_w := (layout.settings_panel.width - gap * 2 - 28) / 3
+		for i in 0..<3 do layout.diff_buttons[i] = {layout.settings_panel.x + 14 + f32(i) * (diff_w + gap), diff_y, diff_w, button_h}
+		layout.settings_close = {layout.settings_panel.x + 14, layout.settings_panel.y + layout.settings_panel.height - 64, layout.settings_panel.width - 28, 50}
 		return layout
 	}
 	button_gap: f32 = 8
 	button_h: f32 = max(42, min(54, p.height * 0.15))
 	row_w := (p.width - button_gap * 2) / 3
 	row1 := p.y + 72
-	row2 := row1 + button_h + 48
-	for i in 0..<3 {
-		layout.size_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row1, row_w, button_h}
-		layout.diff_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row2, row_w, button_h}
+	for i in 0..<4 {
+		row, col := i / 3, i % 3
+		layout.size_buttons[i] = {p.x + f32(col) * (row_w + button_gap), row1 + f32(row) * (button_h + button_gap), row_w, button_h}
 	}
+	row2 := row1 + 3 * (button_h + button_gap) + 28
+	for i in 0..<3 do layout.diff_buttons[i] = {p.x + f32(i) * (row_w + button_gap), row2, row_w, button_h}
 	command_y := min(p.y + p.height - button_h, row2 + button_h + 48)
 	command_width := (p.width - button_gap) / 2
 	layout.new_button = {p.x, command_y, command_width, button_h}
@@ -180,11 +199,15 @@ handle_point_input :: proc(game: ^Game, point: rl.Vector2) {
 		if point_in(point, completion_button(&layout)) do start_puzzle(game)
 		return
 	}
-	if !layout.compact {
-		for i in 0..<3 {
-			if point_in(point, layout.size_buttons[i]) { game.selected_size = Grid_Size(i); return }
-			if point_in(point, layout.diff_buttons[i]) { game.selected_difficulty = Difficulty(i); return }
-		}
+	if layout.compact && point_in(point, layout.settings_button) {
+		game.settings_open = !game.settings_open
+		return
+	}
+	if !layout.compact || game.settings_open {
+		for i in 0..<4 do if point_in(point, layout.size_buttons[i]) { game.selected_size = Grid_Size(i); return }
+		for i in 0..<3 do if point_in(point, layout.diff_buttons[i]) { game.selected_difficulty = Difficulty(i); return }
+		if layout.compact && point_in(point, layout.settings_close) { game.settings_open = false; return }
+		if layout.compact do return
 	}
 	if point_in(point, layout.new_button) {
 		game.auto_solving = false
