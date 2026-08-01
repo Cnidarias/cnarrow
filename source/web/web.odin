@@ -63,6 +63,16 @@ cnarrow_board_pan_y :: proc "c" () -> f32 {
 }
 
 @(export)
+cnarrow_screen_width :: proc "c" () -> i32 {
+	return rl.GetScreenWidth()
+}
+
+@(export)
+cnarrow_screen_height :: proc "c" () -> i32 {
+	return rl.GetScreenHeight()
+}
+
+@(export)
 cnarrow_set_input_suppressed :: proc "c" (suppressed: i32) {
 	context = web_context
 	if web_started do web_game.input_suppressed = suppressed != 0

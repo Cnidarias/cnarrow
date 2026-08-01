@@ -78,8 +78,8 @@
     function canvasPoint(touch) {
       const rect = canvas.getBoundingClientRect();
       return {
-        x: (touch.clientX - rect.left) * canvas.width / rect.width,
-        y: (touch.clientY - rect.top) * canvas.height / rect.height,
+        x: (touch.clientX - rect.left) * game._cnarrow_screen_width() / rect.width,
+        y: (touch.clientY - rect.top) * game._cnarrow_screen_height() / rect.height,
         clientX: touch.clientX,
         clientY: touch.clientY,
       };
@@ -176,7 +176,8 @@
 
     function resize() {
       const [width, height] = canvasPixels();
-      if (width === pixelWidth && height === pixelHeight) return;
+      if (width === pixelWidth && height === pixelHeight &&
+          canvas.width === width && canvas.height === height) return;
       pixelWidth = width;
       pixelHeight = height;
       canvas.width = width;
@@ -214,6 +215,7 @@
       resize();
       game._cnarrow_start(pixelWidth, pixelHeight, Date.now());
       started = true;
+      resize();
       status.classList.add('ready');
       canvas.focus({ preventScroll: true });
       frameHandle = requestAnimationFrame(frame);
