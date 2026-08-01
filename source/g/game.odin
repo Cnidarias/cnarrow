@@ -9,7 +9,7 @@ start_puzzle :: proc(game: ^Game) {
 	game.applied_difficulty = game.selected_difficulty
 	seed := game.seed_counter + u64(game.selected_size) * 97 + u64(game.selected_difficulty) * 7919
 	game.board = generate_board(grid_side(game.selected_size), game.selected_difficulty, seed)
-	game.animation = {}
+	game.animations = {}
 	game.phase = .Playing
 	game.elapsed = 0
 	game.blocked_taps = 0
@@ -40,16 +40,19 @@ request_new_puzzle :: proc(game: ^Game) {
 game_update :: proc(game: ^Game, dt: f32) {
 	if game.phase == .Playing {
 		game.elapsed += dt
-		update_animation(game, dt)
+		update_animations(game, dt)
 	} else if game.phase == .Complete {
 		game.celebration_time += dt
 	}
 	handle_input(game)
 }
 
-pointer_pressed :: proc() -> (rl.Vector2, bool) {
+pointer_pressed :: proc(game: ^Game) -> (rl.Vector2, bool) {
 	if rl.IsMouseButtonPressed(.LEFT) do return rl.GetMousePosition(), true
-	if rl.GetTouchPointCount() > 0 do return rl.GetTouchPosition(0), true
+	touching := rl.GetTouchPointCount() > 0
+	pressed := touching && !game.touch_down
+	game.touch_down = touching
+	if pressed do return rl.GetTouchPosition(0), true
 	return {}, false
 }
 

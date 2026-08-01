@@ -3,11 +3,25 @@ package g
 import "core:math"
 
 start_arrow_animation :: proc(game: ^Game, arrow_id: int) -> bool {
-	if game.animation.kind != .None || game.phase != .Playing do return false
+	if game.phase != .Playing || arrow_id < 0 || arrow_id >= game.board.arrow_count do return false
+	if game.board.arrows[arrow_id].removed do return false
+	existing := active_animation_for_arrow(game, arrow_id)
+	if existing != nil {
+		if existing.kind != .Blocked || !can_escape(&game.board, arrow_id) do return false
+		existing^ = {}
+	}
+	animation: ^Arrow_Animation
+	for i in 0..<len(game.animations) {
+		if game.animations[i].kind == .None {
+			animation = &game.animations[i]
+			break
+		}
+	}
+	if animation == nil do return false
 	blocker, distance, blocked := nearest_blocker(&game.board, arrow_id)
 	if blocked {
 		game.blocked_taps += 1
-		game.animation = {
+		animation^ = {
 			kind = .Blocked, arrow_id = arrow_id, blocker_id = blocker,
 			duration = 0.46, stretch = min(f32(distance) - 0.28, 0.72),
 		}
@@ -22,41 +36,54 @@ start_arrow_animation :: proc(game: ^Game, arrow_id: int) -> bool {
 		case .Left:  exit_distance = head.x + 1
 		}
 		travel := f32(a.length - 1 + exit_distance + 2)
-		game.animation = {
+		animation^ = {
 			kind = .Escaping, arrow_id = arrow_id, blocker_id = -1,
 			duration = min(2.2, max(0.78, 0.52 + travel * 0.018)),
 			stretch = travel,
 		}
+		if !remove_arrow(&game.board, arrow_id) {
+			animation^ = {}
+			return false
+		}
+		game.removed_count += 1
 	}
 	return true
 }
 
-update_animation :: proc(game: ^Game, dt: f32) {
-	a := &game.animation
-	if a.kind == .None do return
-	a.time += dt
-	t := min(a.time / a.duration, 1.0)
-	switch a.kind {
-	case .Blocked:
-		// sin² gives a gentle contact and guarantees an exact zero endpoint.
-		s := f32(math.sin(f64(t) * math.PI))
-		a.offset = a.stretch * s * s
-	case .Escaping:
-		// Smooth acceleration; individual segment lag is applied while drawing.
-		a.offset = a.stretch * t * t * (3 - 2 * t)
-	case .None:
+active_animation_for_arrow :: proc(game: ^Game, arrow_id: int) -> ^Arrow_Animation {
+	for i in 0..<len(game.animations) {
+		a := &game.animations[i]
+		if a.kind != .None && a.arrow_id == arrow_id do return a
 	}
-	if t >= 1 {
-		if a.kind == .Escaping {
-			if remove_arrow(&game.board, a.arrow_id) {
-				game.removed_count += 1
-				if game.removed_count == game.board.arrow_count {
-					game.phase = .Complete
-					game.celebration_time = 0
-				}
-			}
+	return nil
+}
+
+update_animations :: proc(game: ^Game, dt: f32) {
+	active := false
+	for i in 0..<len(game.animations) {
+		a := &game.animations[i]
+		if a.kind == .None do continue
+		a.time += dt
+		t := min(a.time / a.duration, 1.0)
+		switch a.kind {
+		case .Blocked:
+			// sin² gives a gentle contact and guarantees an exact zero endpoint.
+			s := f32(math.sin(f64(t) * math.PI))
+			a.offset = a.stretch * s * s
+		case .Escaping:
+			// Smooth acceleration; individual segment lag is applied while drawing.
+			a.offset = a.stretch * t * t * (3 - 2 * t)
+		case .None:
 		}
-		game.animation = {}
+		if t >= 1 {
+			a^ = {}
+		} else {
+			active = true
+		}
+	}
+	if game.removed_count == game.board.arrow_count && !active {
+		game.phase = .Complete
+		game.celebration_time = 0
 	}
 }
 

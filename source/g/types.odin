@@ -4,6 +4,7 @@ MAX_SIDE   :: 40
 MAX_CELLS  :: MAX_SIDE * MAX_SIDE
 MAX_ARROWS :: MAX_CELLS / 2
 MAX_ARROW_LENGTH :: 128
+MAX_ACTIVE_ANIMATIONS :: 32
 
 Grid_Pos :: struct { x, y: int }
 Path_Pos :: struct { x, y: u8 }
@@ -47,7 +48,7 @@ Board :: struct {
 
 Game :: struct {
 	board:              Board,
-	animation:          Arrow_Animation,
+	animations:         [MAX_ACTIVE_ANIMATIONS]Arrow_Animation,
 	phase:              Game_Phase,
 	selected_size:      Grid_Size,
 	selected_difficulty:Difficulty,
@@ -61,6 +62,7 @@ Game :: struct {
 	board_zoom:         f32,
 	board_pan:          [2]f32,
 	input_suppressed:   bool,
+	touch_down:         bool,
 }
 
 game: Game

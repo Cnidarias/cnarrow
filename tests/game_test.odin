@@ -53,6 +53,18 @@ test_arrow_hit_area_covers_full_stroke :: proc(t: ^testing.T) {
 }
 
 @(test)
+test_portrait_arrow_hit_area_accepts_coarse_taps :: proc(t: ^testing.T) {
+	game := g.Game{}
+	game.board = g.Board{side = 6, arrow_count = 1}
+	game.board.arrows[0] = {id = 0, tail = {0, 2}, length = 5, dir = .Right}
+	testing.expect(t, g.rebuild_occupancy(&game.board))
+	layout := g.make_layout(975, 2110)
+	stroke := g.grid_to_screen(&game.board, &layout, {2, 2})
+	coarse_tap := rl.Vector2{stroke.x, stroke.y + 20}
+	testing.expect_value(t, g.arrow_at_point(&game, coarse_tap, &layout), 0)
+}
+
+@(test)
 test_portrait_layout_hides_settings_and_keeps_touch_targets :: proc(t: ^testing.T) {
 	layout := g.make_layout(975, 2110)
 	testing.expect(t, layout.compact)
@@ -148,17 +160,22 @@ test_animation_endpoints_and_game_states :: proc(t: ^testing.T) {
 	game.board.arrows[1] = {id = 1, tail = {3, 0}, length = 3, dir = .Down}
 	testing.expect(t, g.rebuild_occupancy(&game.board))
 	testing.expect(t, g.start_arrow_animation(&game, 0))
-	testing.expect_value(t, game.animation.kind, g.Animation_Kind.Blocked)
-	g.update_animation(&game, 1)
-	testing.expect_value(t, game.animation.kind, g.Animation_Kind.None)
+	testing.expect_value(t, game.animations[0].kind, g.Animation_Kind.Blocked)
+	g.update_animations(&game, 1)
+	testing.expect_value(t, game.animations[0].kind, g.Animation_Kind.None)
 	testing.expect_value(t, game.blocked_taps, 1)
 	testing.expect_value(t, game.removed_count, 0)
+	testing.expect(t, g.start_arrow_animation(&game, 0))
 	testing.expect(t, g.start_arrow_animation(&game, 1))
-	g.update_animation(&game, 1)
 	testing.expect(t, game.board.arrows[1].removed)
 	testing.expect_value(t, game.removed_count, 1)
+	testing.expect(t, g.start_arrow_animation(&game, 0))
+	testing.expect(t, game.board.arrows[0].removed)
+	testing.expect_value(t, game.removed_count, 2)
+	g.update_animations(&game, 2)
+	testing.expect_value(t, game.phase, g.Game_Phase.Complete)
 	g.request_new_puzzle(&game)
-	testing.expect_value(t, game.phase, g.Game_Phase.Confirm_New)
+	testing.expect_value(t, game.phase, g.Game_Phase.Playing)
 }
 
 @(test)
@@ -183,7 +200,7 @@ test_completion_and_next_puzzle_flow :: proc(t: ^testing.T) {
 	game.board.arrows[0] = {id = 0, tail = {1, 1}, length = 2, dir = .Right}
 	testing.expect(t, g.rebuild_occupancy(&game.board))
 	g.start_arrow_animation(&game, 0)
-	g.update_animation(&game, 2)
+	g.update_animations(&game, 2)
 	testing.expect_value(t, game.phase, g.Game_Phase.Complete)
 	g.start_puzzle(&game)
 	testing.expect_value(t, game.phase, g.Game_Phase.Playing)

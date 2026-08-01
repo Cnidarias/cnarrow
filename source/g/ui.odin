@@ -92,9 +92,10 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 	pad := layout.board.width * 0.065
 	span := layout.board.width - pad * 2
 	spacing := span / f32(board.side - 1)
-	// The whole stroke is interactive, with a forgiving but non-overlapping
-	// target on dense boards. Resolve overlaps by choosing the nearest path.
+	// The whole stroke is interactive. Resolve forgiving target overlaps by
+	// choosing the nearest path.
 	hit_radius := min(14.0, max(7.0, spacing * 0.46))
+	if layout.compact do hit_radius = min(28.0, max(18.0, spacing * 0.8))
 	threshold_sq := hit_radius * hit_radius
 	best_distance := threshold_sq
 	best_arrow := -1
@@ -121,7 +122,7 @@ arrow_at_point :: proc(game: ^Game, point: rl.Vector2, layout: ^Layout) -> int {
 
 handle_input :: proc(game: ^Game) {
 	if game.input_suppressed do return
-	point, pressed := pointer_pressed()
+	point, pressed := pointer_pressed(game)
 	if !pressed do return
 	layout := game_layout(game, f32(rl.GetScreenWidth()), f32(rl.GetScreenHeight()))
 	if game.phase == .Confirm_New {
@@ -135,7 +136,6 @@ handle_input :: proc(game: ^Game) {
 		if point_in(point, completion_button(&layout)) do start_puzzle(game)
 		return
 	}
-	if game.animation.kind != .None do return
 	if !layout.compact {
 		for i in 0..<3 {
 			if point_in(point, layout.size_buttons[i]) { game.selected_size = Grid_Size(i); return }

@@ -43,10 +43,11 @@ grid_coordinates_to_screen :: proc(board: ^Board, layout: ^Layout, x, y: f32) ->
 draw_arrow :: proc(game: ^Game, arrow: ^Arrow, layout: ^Layout) {
 	points: [MAX_ARROW_LENGTH]rl.Vector2
 	head_dir := arrow_direction(&game.board, arrow)
+	animation := active_animation_for_arrow(game, arrow.id)
 	for segment in 0..<arrow.length {
 		travel: f32
-		if game.animation.kind != .None && game.animation.arrow_id == arrow.id {
-			travel = animation_segment_offset(&game.animation, segment, arrow.length)
+		if animation != nil {
+			travel = animation_segment_offset(animation, segment, arrow.length)
 		}
 		x, y := arrow_path_position(&game.board, arrow, f32(segment) + travel)
 		points[segment] = grid_coordinates_to_screen(&game.board, layout, x, y)
@@ -83,7 +84,9 @@ draw_board :: proc(game: ^Game, layout: ^Layout) {
 		}
 	}
 	for i in 0..<game.board.arrow_count {
-		if !game.board.arrows[i].removed do draw_arrow(game, &game.board.arrows[i], layout)
+		if !game.board.arrows[i].removed || active_animation_for_arrow(game, i) != nil {
+			draw_arrow(game, &game.board.arrows[i], layout)
+		}
 	}
 }
 
